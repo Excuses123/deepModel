@@ -1,1 +1,9 @@
-./idea
+*.h5
+*.ipynb
+.idea/
+
+
+build/
+dist/
+sdist/
+*.egg-info/
