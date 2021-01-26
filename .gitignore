@@ -1,6 +1,7 @@
 *.h5
 *.ipynb
 .idea/
+test/unused/*
 
 
 build/
