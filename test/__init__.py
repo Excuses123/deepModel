@@ -1,0 +1,1 @@
+from test.hello import text
