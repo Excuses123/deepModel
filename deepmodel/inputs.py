@@ -5,11 +5,21 @@ Author:
 """
 
 import os
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-dtypes = {'int32': tf.int32, 'int64': tf.int64, 'float32': tf.float32, 'float64': tf.float64, 'str': tf.string}
+
+
+class Feature(object):
+    """ 特征信息类 """
+    def __init__(self, name, dtype='int64', dim=1, dense=False):
+        self.name = name
+        self.dtype = dtype
+        self.dim = dim
+        self.dense = dense
+
 
 class Inputs(object):
+    """ 批量加载tfrecord数据 """
 
     def __init__(self, features, filepath, repeats=1, shuffle_size=1, prefetch_size=1, num_parallel_calls=16):
         self.filepath = filepath
@@ -21,14 +31,15 @@ class Inputs(object):
         self.toDense = []
         self.keepDim = []
         self.dicts = {}
-        for k, v in features.items():
-            if v['arrayType'] == 1:
-                self.dicts[k] = tf.FixedLenFeature([1], dtype=dtypes[v['dtype']])
-                self.keepDim.append(k)
+        for feature in features:
+            name = feature.name
+            if feature.dim == 1:
+                self.dicts[name] = tf.FixedLenFeature([1], dtype=feature.dtype)
+                self.keepDim.append(name)
             else:
-                self.dicts[k] = tf.VarLenFeature(dtype=dtypes[v['dtype']])
-                if v['to_dense']:
-                    self.toDense.append(k)
+                self.dicts[name] = tf.VarLenFeature(dtype=feature.dtype)
+                if feature.dense:
+                    self.toDense.append(name)
 
     def parser(self, record):
         return tf.parse_single_example(record, self.dicts)
@@ -55,10 +66,7 @@ class Inputs(object):
         return batch_x
 
     def filenames(self):
-        return [os.path.join(self.filepath, i) for i in os.listdir(self.filepath) if i != '_SUCCESS']
-
-
-
-
-
-
+        if not os.path.isdir(self.filepath):
+            return self.filepath
+        else:
+            return [os.path.join(self.filepath, i) for i in os.listdir(self.filepath)]

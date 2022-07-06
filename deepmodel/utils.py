@@ -4,7 +4,7 @@ Author:
     LuJie, 597906300@qq.com
 """
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 def save2tfrecord(filename, data, sparse_feats, dense_feats, seq_feats, label_name):
