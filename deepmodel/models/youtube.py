@@ -7,34 +7,20 @@ from ..core.sequence import SequencePoolingLayer, WeightedPoolingLayer
 
 class YouTubeRecall(object):
 
-    def __init__(self, args, batch_x, flag):
+    def __init__(self, args, batch, flag):
 
         self.args = args
+        self.batch = batch
 
-        self.hist_click = batch_x['gameids']
-        self.weights = batch_x['weights']
-        self.click_len = batch_x['click_len']
-        self.last_click = batch_x['last_click']
-
-        self.modelid = batch_x['model']
-        self.version = batch_x['version']
-        self.channel = batch_x['channel']
-        self.version = batch_x['version']
-
-        self.channel_game = batch_x['channel_game']
-        self.ischannelgame = batch_x['ischannelgame']
-
-        self.create_user_vector()
+        self.build_model()
 
         if flag == "pred":
-            self.game_pool = batch_x['game_pool']
+            self.game_pool = batch['game_pool']
             self.pred()
         else:
-            self.udid = batch_x['udid']
-            self.label = batch_x['label']
             self.train() if flag == "train" else self.test()
 
-    def create_user_vector(self):
+    def build_model(self):
 
         self.gameid_emb_w = tf.get_variable("gameid_emb_w", [self.args.gameid_count, self.args.embedding_size])
         self.model_emb_w = tf.get_variable("model_emb_w", [self.args.model_count, 32])
@@ -43,22 +29,22 @@ class YouTubeRecall(object):
 
         self.input_b = tf.get_variable("input_b", [self.args.gameid_count], initializer=tf.constant_initializer(0.0))
 
-        h_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.hist_click)
+        h_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.batch['gameids'])
         if self.args.use_weight:
-            hists = WeightedPoolingLayer().run(h_emb, self.click_len, self.weights)
+            hists = WeightedPoolingLayer().run(h_emb, self.batch['click_len'], self.batch['weights'])
         else:
-            hists = SequencePoolingLayer(mode="mean").run(h_emb, self.click_len)
+            hists = SequencePoolingLayer(mode="mean").run(h_emb, self.batch['click_len'])
 
-        last_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.last_click)
-        click_len = tf.cast(tf.expand_dims(self.click_len, 1), dtype=tf.float32)
+        last_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.batch['last_click'])
+        click_len = tf.cast(tf.expand_dims(self.batch['click_len'], 1), dtype=tf.float32)
         last_emb = tf.math.divide_no_nan((last_emb * click_len), click_len)
 
-        modelid_emb = tf.nn.embedding_lookup(self.model_emb_w, self.modelid)
-        version_emb = tf.nn.embedding_lookup(self.version_emb_w, self.version)
-        channel_emb = tf.nn.embedding_lookup(self.channel_emb_w, self.channel)
+        modelid_emb = tf.nn.embedding_lookup(self.model_emb_w, self.batch['model'])
+        version_emb = tf.nn.embedding_lookup(self.version_emb_w, self.batch['version'])
+        channel_emb = tf.nn.embedding_lookup(self.channel_emb_w, self.batch['channel'])
 
-        channel_game_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.channel_game)
-        channel_game_emb = channel_game_emb * tf.cast(tf.expand_dims(self.ischannelgame, 1), dtype=tf.float32)
+        channel_game_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.batch['channel_game'])
+        channel_game_emb = channel_game_emb * tf.cast(tf.expand_dims(self.batch['ischannelgame'], 1), dtype=tf.float32)
 
         inputs = tf.reshape(
             tf.concat([hists, last_emb, modelid_emb, version_emb, channel_emb, channel_game_emb], axis=1),
@@ -70,9 +56,9 @@ class YouTubeRecall(object):
 
     def train(self):
 
-        y = tf.sequence_mask(tf.ones(tf.shape(self.label)[0]), tf.shape(self.label)[1], dtype=tf.float32)
-        sample_b = tf.nn.embedding_lookup(self.input_b, self.label)
-        sample_w = tf.concat([tf.nn.embedding_lookup(self.gameid_emb_w, self.label)], axis=2)
+        y = tf.sequence_mask(tf.ones(tf.shape(self.batch['label'])[0]), tf.shape(self.batch['label'])[1], dtype=tf.float32)
+        sample_b = tf.nn.embedding_lookup(self.input_b, self.batch['label'])
+        sample_w = tf.concat([tf.nn.embedding_lookup(self.gameid_emb_w, self.batch['label'])], axis=2)
 
         user_v = tf.expand_dims(self.user_emb, 1)
         sample_w = tf.transpose(sample_w, perm=[0, 2, 1])
@@ -95,14 +81,14 @@ class YouTubeRecall(object):
         pred_topn = tf.gather(self.args.gameid_key, tf.nn.top_k(pred, k=self.args.recall_topN).indices)
 
         self.output = {
-            'udid': self.udid,
-            'model': self.modelid,
-            'version': self.version,
-            'channel': self.channel,
+            'udid': self.batch['udid'],
+            'model': self.batch['model'],
+            'version': self.batch['version'],
+            'channel': self.batch['channel'],
             'pred_topn': pred_topn,
             'pred_topn_str': tf.reduce_join(tf.as_string(pred_topn), separator=",", axis=1),
-            'label': tf.gather(self.args.gameid_key, self.label),
-            'last_click': tf.gather(self.args.gameid_key, self.last_click)
+            'label': tf.gather(self.args.gameid_key, self.batch['label']),
+            'last_click': tf.gather(self.args.gameid_key, self.batch['last_click'])
         }
 
     def pred(self):
@@ -119,29 +105,10 @@ class YouTubeRecall(object):
 
 
 class YouTubeRank(object):
-    def __init__(self, args, batch_x, flag):
+    def __init__(self, args, batch, flag):
 
         self.args = args
-
-        self.hist_click = batch_x['gameids']
-        self.weights = batch_x['weights']
-        self.click_len = batch_x['click_len']
-        self.last_click = batch_x['last_click']
-
-        self.channel_game = batch_x['channel_game']
-        self.ischannelgame = batch_x['ischannelgame']
-        self.isnew = batch_x['isnew']
-
-        self.packages = batch_x['packages']
-        self.package_num = batch_x['package_num']
-
-        self.gameid = batch_x['gameid']
-        self.position = batch_x['position']
-
-        self.modelid = batch_x['model']
-        self.version = batch_x['version']
-        self.connectiontype = batch_x['connectiontype']
-        self.channel = batch_x['channel']
+        self.batch = batch
 
         if flag == "pred":
             game_feat_w = tf.constant(self.args.game_features, dtype=tf.float32, name="game_features")
@@ -149,13 +116,6 @@ class YouTubeRank(object):
             self.build_model()
             self.pred()
         else:
-            self.versionv = batch_x['versionv']
-            self.udid = batch_x['udid']
-            self.isclick = batch_x['isclick']
-            self.isdownload = batch_x['isdownload']
-            self.isrealshow = batch_x['isrealshow']
-            self.is_detail_entry = batch_x['is_detail_entry']
-            self.dense_features = batch_x['dense_features']
             self.build_model()
             self.train() if flag == "train" else self.test()
 
@@ -168,12 +128,10 @@ class YouTubeRank(object):
 
     def build_model(self):
 
-        #         if self.args.fine_tune:
-        #             self.gameid_emb_w = tf.Variable(self.__load_w2v(self.args.emb_path, self.args.embedding_size), dtype=tf.float32, name='gameid_emb_w')
-        #         else:
-        #             self.gameid_emb_w = tf.Variable(tf.random_uniform([self.args.gameid_count, self.args.embedding_size], seed=42), name='gameid_emb_w')
-
-        self.gameid_emb_w = tf.get_variable("gameid_emb_w", [self.args.gameid_count + 100, self.args.embedding_size])
+        if self.args.fine_tune:
+            self.gameid_emb_w = tf.Variable(self.__load_w2v(self.args.emb_path, self.args.embedding_size), dtype=tf.float32, name='gameid_emb_w')
+        else:
+            self.gameid_emb_w = tf.Variable(tf.random_uniform([self.args.gameid_count + 100, self.args.embedding_size], seed=42), name='gameid_emb_w')
 
         self.model_emb_w = tf.get_variable("model_emb_w", [self.args.model_count + 100, 15])
 
@@ -188,31 +146,31 @@ class YouTubeRank(object):
         gameid_feats = tf.layers.dense(tf.reshape(self.dense_features, [-1, 18]), 18, activation=None,
                                        name='missing_value_layer')
 
-        h_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.hist_click)
+        h_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.batch['hist_click'])
         if self.args.use_weight:
-            hists = WeightedPoolingLayer().run(h_emb, self.click_len, self.weights)
+            hists = WeightedPoolingLayer().run(h_emb, self.batch['click_len'], self.batch['weights'])
         else:
-            hists = SequencePoolingLayer(mode="mean").run(h_emb, self.click_len)
+            hists = SequencePoolingLayer(mode="mean").run(h_emb, self.batch['click_len'])
 
-        #         last_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.last_click)
+        #last_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.last_click)
 
-        channel_game_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.channel_game)
-        channel_game_emb = channel_game_emb * tf.cast(tf.expand_dims(self.ischannelgame, 1), dtype=tf.float32)
+        channel_game_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.batch['channel_game'])
+        channel_game_emb = channel_game_emb * tf.cast(tf.expand_dims(self.batch['ischannelgame'], 1), dtype=tf.float32)
 
-        package_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.packages)
-        packages = SequencePoolingLayer(mode="mean").run(package_emb, self.package_num)
+        package_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.batch['packages'])
+        packages = SequencePoolingLayer(mode="mean").run(package_emb, self.batch['package_num'])
 
-        model_emb = tf.nn.embedding_lookup(self.model_emb_w, self.modelid)
-        version_emb = tf.nn.embedding_lookup(self.version_emb_w, self.version)
-        connectiontype_emb = tf.nn.embedding_lookup(self.connectiontype_emb_w, self.connectiontype)
-        channel_emb = tf.nn.embedding_lookup(self.channel_emb_w, self.channel)
+        model_emb = tf.nn.embedding_lookup(self.model_emb_w, self.batch['modelid'])
+        version_emb = tf.nn.embedding_lookup(self.version_emb_w, self.batch['version'])
+        connectiontype_emb = tf.nn.embedding_lookup(self.connectiontype_emb_w, self.batch['connectiontype'])
+        channel_emb = tf.nn.embedding_lookup(self.channel_emb_w, self.batch['channel'])
 
-        position_emb = tf.nn.embedding_lookup(self.position_emb_w, self.position)
+        position_emb = tf.nn.embedding_lookup(self.position_emb_w, self.batch['position'])
         self.logits_bias = tf.layers.dense(position_emb, 2, activation=None, name="logits_bias")
 
-        gameid_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.gameid)
+        gameid_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.batch['gameid'])
 
-        isNew = tf.cast(tf.expand_dims(self.isnew, 1), dtype=tf.float32)
+        isNew = tf.cast(tf.expand_dims(self.batch['isnew'], 1), dtype=tf.float32)
 
         inputs = tf.reshape(tf.concat(
             [hists, packages, model_emb, version_emb, connectiontype_emb, channel_emb, channel_game_emb, gameid_emb,
@@ -226,9 +184,9 @@ class YouTubeRank(object):
     def train(self):
         self.detail_loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits_detail,
                                                                                          labels=tf.squeeze(
-                                                                                             self.is_detail_entry)))
+                                                                                             self.batch['is_detail_entry'])))
         self.click_loss = tf.reduce_mean(
-            tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits_click, labels=tf.squeeze(self.isclick)))
+            tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits_click, labels=tf.squeeze(self.batch['isclick'])))
 
         self.joint_loss = self.detail_loss + self.click_loss
 
@@ -240,25 +198,25 @@ class YouTubeRank(object):
 
     def test(self):
         self.output = {
-            'isrealshow': self.isrealshow,
-            'is_detail_entry': self.is_detail_entry,
-            'isclick': self.isclick,
-            'isdownload': self.isdownload,
-            'isnew': self.isnew,
+            'isrealshow': self.batch['isrealshow'],
+            'is_detail_entry': self.batch['is_detail_entry'],
+            'isclick': self.batch['isclick'],
+            'isdownload': self.batch['isdownload'],
+            'isnew': self.batch['isnew'],
             'pred_detail': tf.nn.softmax(self.logits_detail)[:, 1],
             'pred_click': tf.nn.softmax(self.logits_click)[:, 1],
-            'versionv': self.versionv,
-            'udid': self.udid,
-            'position': self.position,
+            'versionv': self.batch['versionv'],
+            'udid': self.batch['udid'],
+            'position': self.batch['position'],
             'gameid': tf.gather(self.args.gameid_key, self.gameid),
-            'model': tf.gather(self.args.model_key, self.modelid),
-            'version': tf.gather(self.args.version_key, self.version),
-            'connectiontype': tf.gather(self.args.connectiontype_key, self.connectiontype)
+            'model': tf.gather(self.args.model_key, self.batch['model']),
+            'version': tf.gather(self.args.version_key, self.batch['version']),
+            'connectiontype': tf.gather(self.args.connectiontype_key, self.batch['connectiontype'])
         }
 
     def pred(self):
-        self.gameid_map = tf.cast(self.gameid, dtype=tf.int32)
-        self.gameid = tf.gather(self.args.gameid_key, self.gameid)
+        self.gameid_map = tf.cast(self.batch['gameid'], dtype=tf.int32)
+        self.gameid = tf.gather(self.args.gameid_key, self.batch['gameid'])
         self.pred_detail = tf.nn.softmax(self.logits_detail, name="pred_detail")[:, 1]
         self.pred_click = tf.nn.softmax(self.logits_click, name="pred_click")[:, 1]
 

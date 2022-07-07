@@ -61,7 +61,7 @@ class Inputs(object):
         for feat in self.toDense:
             batch_x[feat] = tf.sparse_tensor_to_dense(batch_x[feat])
         for feat in self.keepDim:
-            batch_x[feat] = tf.squeeze(batch_x[feat])
+            batch_x[feat] = batch_x[feat][:, 0]
 
         return batch_x
 
