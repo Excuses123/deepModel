@@ -6,16 +6,29 @@ Author:
 
 import os
 import tensorflow.compat.v1 as tf
-
+from tensorflow.python.keras.utils import generic_utils
 
 class Feature(object):
     """ 特征信息类 """
 
-    def __init__(self, name, dtype='int64', dim=1, dense=False):
+    def __init__(self, name, dtype='int64', dim=1, dense=False, **kwargs):
         self.name = name
         self.dtype = dtype
         self.dim = dim
         self.dense = dense
+
+        allowed_kwargs = {
+            'emb_count',
+            'for_train'
+        }
+        # Validate optional keyword arguments.
+        generic_utils.validate_kwargs(kwargs, allowed_kwargs)
+        self.emb_count = kwargs.pop('emb_count', None)
+
+        if 'for_train' in kwargs:
+            self.for_train = kwargs['for_train']
+        else:
+            self.for_train = False
 
 
 class Inputs(object):
@@ -86,19 +99,19 @@ class Inputs(object):
             return [os.path.join(self.filepath, i) for i in os.listdir(self.filepath)]
 
 
-def Int64List(value):
+def __Int64List(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
 
-def FloatList(value):
+def __FloatList(value):
     return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
 
-def BytesList(value):
+def __BytesList(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
 
 
-def FeatureList(value):
+def __FeatureList(value):
     return tf.train.Feature(feature_list=tf.train.FloatList(value=value))
 
 
@@ -108,13 +121,13 @@ def save2tfrecord(filename, data, features):
         feats_dict = {}
         for feature in features:
             if feature.dtype.startswith("int"):
-                feats_dict[feature.name] = Int64List([row[feature.name]] if feature.dim == 1
+                feats_dict[feature.name] = __Int64List([row[feature.name]] if feature.dim == 1
                                                      else row[feature.name])
             if feature.dtype.startswith("float"):
-                feats_dict[feature.name] = FloatList([row[feature.name]] if feature.dim == 1
+                feats_dict[feature.name] = __FloatList([row[feature.name]] if feature.dim == 1
                                                      else row[feature.name])
             if feature.dtype.startswith("str"):
-                feats_dict[feature.name] = BytesList([row[feature.name]] if feature.dim == 1
+                feats_dict[feature.name] = __BytesList([row[feature.name]] if feature.dim == 1
                                                      else row[feature.name])
         tf_example = tf.train.Example(features=tf.train.Features(feature=feats_dict))
         writer.write(tf_example.SerializeToString())
