@@ -37,7 +37,7 @@ class DeepFM(object):
         for feat in self.emb_feat:
             v[f'{feat.name}_emb'] = tf.get_variable(f'{feat.name}_emb', shape=[feat.emb_count, self.args.K])
 
-        # tf.sparse_tensor_dense_matmul(self.X, w1)   shape: (batch, 1)
+        # line = tf.sparse_tensor_dense_matmul(self.X, w1)   shape: (batch, 1)
         # x1 = tf.sparse_tensor_dense_matmul(self.X, v)    shape: (batch, k)
         # x2 = tf.sparse_tensor_dense_matmul(self.X, tf.pow(v, 2):   值都为1，tf.pow(self.X, 2) = self.X
         line, x1, x2 = [], [], []
