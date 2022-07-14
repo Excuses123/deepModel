@@ -19,16 +19,24 @@ class Feature(object):
 
         allowed_kwargs = {
             'emb_count',
+            'emb_size',
+            'feat_size',
             'for_train'
         }
         # Validate optional keyword arguments.
         generic_utils.validate_kwargs(kwargs, allowed_kwargs)
         self.emb_count = kwargs.pop('emb_count', None)
+        self.feat_size = kwargs.pop('feat_size', 1)
 
         if 'for_train' in kwargs:
             self.for_train = kwargs['for_train']
         else:
             self.for_train = False
+
+        if 'emb_size' in kwargs:
+            self.emb_size = kwargs['emb_size']
+        else:
+            self.emb_size = 1
 
 
 class Inputs(object):

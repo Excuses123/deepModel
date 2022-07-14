@@ -25,17 +25,13 @@ class DeepFM(object):
 
     def build_model(self):
         """FM"""
-        # lr参数
-        w1 = {}
+        # lr参数、交叉项参数
+        w1, v = {}, {}
         for feat in self.emb_feat:
             w1[f'{feat.name}_w1'] = tf.get_variable(f'{feat.name}_w1', shape=[feat.emb_count, 1])
+            v[f'{feat.name}_emb'] = tf.get_variable(f'{feat.name}_emb', shape=[feat.emb_count, self.args.K])
         # 偏置
         b = tf.get_variable('bias', shape=[1], initializer=tf.constant_initializer(0.01))
-
-        # 交叉项参数
-        v = {}
-        for feat in self.emb_feat:
-            v[f'{feat.name}_emb'] = tf.get_variable(f'{feat.name}_emb', shape=[feat.emb_count, self.args.K])
 
         # line = tf.sparse_tensor_dense_matmul(self.X, w1)   shape: (batch, 1)
         # x1 = tf.sparse_tensor_dense_matmul(self.X, v)    shape: (batch, k)
