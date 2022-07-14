@@ -5,17 +5,17 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="deepModel",
-    version="0.0.4",
+    version="0.0.5",
     author="lujie",
     author_email="597906300@qq.com",
-    description="A PyPi test project",
+    description="This is a toolkit for deep learning development",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Excuses123/deepModel",
     download_url='https://github.com/Excuses123/deepModel/tags',
     packages=setuptools.find_packages(exclude=["test", "test.models"]),
     python_requires=">=3.0",
-    install_requires=['h5py', 'requests'],
+    install_requires=['h5py', 'requests', 'pandas'],
     extras_require={
         "cpu": ["tensorflow>=1.14.0"],
         "gpu": ["tensorflow-gpu>=1.14.0"],
@@ -30,5 +30,5 @@ setuptools.setup(
         'Programming Language :: Python :: 3.7',
     ],
     license="Apache-2.0",
-    keywords=['deep learning', 'tensorflow', 'tensor']
+    keywords=['deep learning', 'tensorflow', 'recommendation']
 )
