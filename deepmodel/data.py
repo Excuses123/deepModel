@@ -7,6 +7,8 @@ Author:
 import os
 import tensorflow.compat.v1 as tf
 from tensorflow.python.keras.utils import generic_utils
+from tensorflow.python.keras.preprocessing.sequence import pad_sequences
+
 
 class Feature(object):
     """ 特征信息类 """
@@ -39,7 +41,7 @@ class Feature(object):
             self.emb_size = 1
 
 
-class Inputs(object):
+class TFRecordLoader(object):
     """ 批量加载tfrecord数据 """
 
     def __init__(self, features, filepath, repeats=1, shuffle_size=1,
@@ -105,6 +107,43 @@ class Inputs(object):
             return self.filepath
         else:
             return [os.path.join(self.filepath, i) for i in os.listdir(self.filepath)]
+
+
+class DataFrameLoader(object):
+    """ 批量加载tfrecord数据 """
+
+    def __init__(self, features, data, repeats=1, shuffle_size=1, prefetch_size=1):
+        self.features = features
+        self.data = data
+        self.repeats = repeats
+        self.shuffle_size = shuffle_size
+        self.prefetch_size = prefetch_size
+        self.__to_dict()
+
+    def __to_dict(self):
+        self.data_dict = {}
+        for feature in self.features:
+            if feature.dim == 1:
+                self.data_dict[feature.name] = self.data[feature.name].values
+            else:
+                self.data_dict[feature.name] = pad_sequences(self.data[feature.name].to_list(),
+                                                             dtype=feature.dtype, padding='post')
+
+    def load_batch(self, batch_size):
+
+        iterator = tf.data.Dataset.from_tensor_slices(self.data_dict) \
+            .repeat(self.repeats) \
+            .shuffle(buffer_size=self.shuffle_size) \
+            .batch(batch_size) \
+            .prefetch(buffer_size=self.prefetch_size) \
+            .make_one_shot_iterator()
+
+        batch_x = iterator.get_next()
+
+        for feat in self.features:
+            batch_x[feat.name] = tf.cast(batch_x[feat.name], feat.dtype)
+
+        return batch_x
 
 
 def __Int64List(value):

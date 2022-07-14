@@ -1,6 +1,6 @@
 
 import tensorflow as tf
-from deepmodel.data import Inputs, Feature
+from deepmodel.data import TFRecordLoader, Feature
 from deepmodel.models import YouTubeRank
 
 
@@ -23,7 +23,7 @@ features = [
 
 args = Args()
 
-inputs = Inputs(features, 'examples/test.tfrecord', repeats=args.epoch)
+inputs = TFRecordLoader(features, 'examples/test.tfrecord', repeats=args.epoch)
 batch_x = inputs.load_batch(args.batch_size)
 
 model = YouTubeRank(args, features, batch_x, 0.8)
