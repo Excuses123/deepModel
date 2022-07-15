@@ -141,6 +141,8 @@ class YouTubeRank(object):
 
         self.logits = tf.layers.dense(outputs, 2, activation=None, name="logits")
 
+        self.pred = tf.nn.softmax(self.logits)[:, 1]
+
     def train(self):
         self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits,
                                                                                   labels=tf.cast(self.label, tf.int32)))
@@ -152,7 +154,7 @@ class YouTubeRank(object):
 
     def test(self, cols):
         self.output = {
-            'pred_label': tf.nn.softmax(self.logits)[:, 1]
+            'pred_label': self.pred
         }
         for col in cols:
             self.output[col] = self.batch[col]
