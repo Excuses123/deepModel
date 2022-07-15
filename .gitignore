@@ -3,6 +3,7 @@
 .idea/
 test/unused/*
 data/
+pypi.sh
 
 
 build/

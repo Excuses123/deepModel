@@ -1,6 +1,6 @@
 
 import tensorflow as tf
-from deepmodel.data import TFRecordLoader, DataFrameLoader, Feature
+from deepmodel.data import TFRecordLoader, Feature
 from deepmodel.models import DeepFM
 
 class Args(object):
@@ -10,14 +10,14 @@ class Args(object):
     learning_rate = 0.001
 
 features = [
-    Feature(name='id', dtype='string', dim=1),
-    Feature(name='a', dtype='int32', dim=1, emb_count=11, for_train=True),
-    Feature(name='b', dtype='int64', dim=1, emb_count=101, for_train=True),
-    Feature(name='c', dtype='int64', dim=2, dense=True, emb_count=101, for_train=True),
-    Feature(name='c_len', dtype='int64', dim=1),
-    Feature(name='d', dtype='float32', dim=1, emb_count=1, for_train=True),
-    Feature(name='e', dtype='float32', dim=2, dense=True, emb_count=10, for_train=True),
-    Feature(name='label', dtype='float32', dim=1)
+    Feature(name='id', dtype='string', dim=1, for_train=False),
+    Feature(name='a', dtype='int32', dim=1, emb_count=11),
+    Feature(name='b', dtype='int64', dim=1, emb_count=101),
+    Feature(name='c', dtype='int64', dim=2, dense=True, emb_count=101),
+    Feature(name='c_len', dtype='int64', dim=1, for_train=False),
+    Feature(name='d', dtype='float32', dim=1, emb_count=1),
+    Feature(name='e', dtype='float32', dim=2, dense=True, emb_count=10),
+    Feature(name='label', dtype='float32', dim=1, for_train=False)
 ]
 
 args = Args()

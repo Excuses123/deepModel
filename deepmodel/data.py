@@ -22,6 +22,7 @@ class Feature(object):
         allowed_kwargs = {
             'emb_count',
             'emb_size',
+            'emb_share',
             'feat_size',
             'for_train'
         }
@@ -29,11 +30,12 @@ class Feature(object):
         generic_utils.validate_kwargs(kwargs, allowed_kwargs)
         self.emb_count = kwargs.pop('emb_count', None)
         self.feat_size = kwargs.pop('feat_size', 1)
+        self.emb_share = kwargs.pop('emb_share', None)
 
         if 'for_train' in kwargs:
             self.for_train = kwargs['for_train']
         else:
-            self.for_train = False
+            self.for_train = True
 
         if 'emb_size' in kwargs:
             self.emb_size = kwargs['emb_size']

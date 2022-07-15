@@ -32,18 +32,22 @@ class YouTubeRecall(object):
 
         self.embeddings = {}
         for feat in self.emb_feat:
-            self.embeddings[f'{feat.name}_emb'] = tf.get_variable(f'{feat.name}_emb', shape=[feat.emb_count, feat.emb_size])
+            shape = [feat.emb_count, feat.emb_size]
+            self.embeddings[f'{feat.name}_emb'] = (tf.get_variable(f'{feat.name}_emb', shape=shape), shape)
 
         self.input_b = tf.get_variable("input_b", [1], initializer=tf.constant_initializer(0.0))
 
         concat_list, concat_dim = [], 0
+
         for feat in self.train_feat:
-            if feat.emb_count and feat.dtype.startswith('int'):
-                f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.name}_emb'], self.batch[feat.name])
+            if feat.dtype.startswith('int'):
+                f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
+                                               else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
+                shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
                 if feat.dim == 2:
                     f_emb = SequencePoolingLayer().run(f_emb, self.batch[f'{feat.name}_len'])
                 concat_list.append(f_emb)
-                concat_dim += feat.emb_size
+                concat_dim += shape[1]
             else:
                 f_emb = tf.reshape(self.batch[feat.name], [-1, 1]) if feat.dim < 2 else self.batch[feat.name]
                 concat_list.append(f_emb)
@@ -111,18 +115,21 @@ class YouTubeRank(object):
 
     def build_model(self):
 
-        embeddings = {}
+        self.embeddings = {}
         for feat in self.emb_feat:
-            embeddings[f'{feat.name}_emb'] = tf.get_variable(f'{feat.name}_emb', shape=[feat.emb_count, feat.emb_size])
+            shape = [feat.emb_count, feat.emb_size]
+            self.embeddings[f'{feat.name}_emb'] = (tf.get_variable(f'{feat.name}_emb', shape=shape), shape)
 
         concat_list, concat_dim = [], 0
         for feat in self.train_feat:
-            if feat.emb_count and feat.dtype.startswith('int'):
-                f_emb = tf.nn.embedding_lookup(embeddings[f'{feat.name}_emb'], self.batch[feat.name])
+            if feat.dtype.startswith('int'):
+                f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
+                                               else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
+                shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
                 if feat.dim == 2:
                     f_emb = SequencePoolingLayer().run(f_emb, self.batch[f'{feat.name}_len'])
                 concat_list.append(f_emb)
-                concat_dim += feat.emb_size
+                concat_dim += shape[1]
             else:
                 f_emb = tf.reshape(self.batch[feat.name], [-1, 1]) if feat.dim < 2 else self.batch[feat.name]
                 concat_list.append(f_emb)
