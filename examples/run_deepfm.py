@@ -2,6 +2,7 @@
 import tensorflow as tf
 from deepmodel.data import TFRecordLoader, Feature
 from deepmodel.models import DeepFM
+from deepmodel.utils import save_ckpt, load_ckpt
 
 class Args(object):
     K = 4
@@ -9,6 +10,7 @@ class Args(object):
     batch_size = 32
     learning_rate = 0.001
     bn_training = True
+    save_path = './examples/checkpoint'
 
 features = [
     Feature(name='id', dtype='string', dim=1, for_train=False),
@@ -23,33 +25,45 @@ features = [
 
 args = Args()
 
-inputs = TFRecordLoader(features, 'examples/test.tfrecord', repeats=args.epoch)
-batch_x = inputs.load_batch(args.batch_size)
+# train
+with tf.Session() as sess:
+    inputs = TFRecordLoader(features, 'examples/test.tfrecord', repeats=args.epoch)
+    batch_x = inputs.load_batch(args.batch_size)
 
-model = DeepFM(args, features, batch_x, 0.8)
-model.train()
-sess = tf.Session()
-sess.run(tf.global_variables_initializer())
-l1_sum, l2_sum, l3_sum, step = 0, 0, 0, 0
-while True:
-    try:
-        l1, l2, l3, _ = sess.run([model.loss, model.log_loss, model.mse_loss, model.train_op])
-        l1_sum += l1
-        l2_sum += l2
-        l3_sum += l3
-        step += 1
-        if step % 10 == 0:
-            print(f'step: {step}   loss: {l1_sum}    log_loss: {l2_sum}   mse_loss: {l3_sum}')
-    except:
-        print("End of dataset")
-        break
+    model = DeepFM(args, features, batch_x, 0.8)
+    model.train()
+    sess.run(tf.global_variables_initializer())
 
+    l1_sum, l2_sum, l3_sum, step = 0, 0, 0, 0
+    while True:
+        try:
+            l1, l2, l3, _ = sess.run([model.loss, model.log_loss, model.mse_loss, model.train_op])
+            l1_sum += l1
+            l2_sum += l2
+            l3_sum += l3
+            step += 1
+            if step % 10 == 0:
+                print(f'step: {step}   loss: {l1_sum}    log_loss: {l2_sum}   mse_loss: {l3_sum}')
+        except:
+            print("End of dataset")
+            break
+    save_ckpt(sess, args.save_path, global_step=step)
+
+# test
 out_cols = ['id', 'label']
 args.bn_training = False
-model = DeepFM(args, features, batch_x, 1.0)
-model.test(out_cols)
-sess = tf.Session()
-sess.run(tf.global_variables_initializer())
-output = sess.run(model.output)
+
+tf.reset_default_graph()
+with tf.Session() as sess:
+    inputs = TFRecordLoader(features, 'examples/test.tfrecord', repeats=args.epoch)
+    batch_x = inputs.load_batch(args.batch_size)
+
+    model = DeepFM(args, features, batch_x, 1.0)
+    model.test(out_cols)
+    sess.run(tf.global_variables_initializer())
+
+    sess = load_ckpt(sess, args.save_path)
+    output = sess.run(model.output)
+    print(output)
 
 

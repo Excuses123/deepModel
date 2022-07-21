@@ -27,44 +27,48 @@ features = [
 
 args = Args()
 
-inputs = TFRecordLoader(features, 'examples/test.tfrecord', repeats=args.epoch)
-batch_x = inputs.load_batch(args.batch_size)
-
 # train
-sess = tf.Session()
-model = YouTubeRank(args, features, batch_x, 0.8)
-model.train()
-sess.run(tf.global_variables_initializer())
-l1_sum, step = 0, 0
-while True:
-    try:
-        l1, _ = sess.run([model.loss, model.train_op])
-        l1_sum += l1
-        step += 1
-        if step % 10 == 0:
-            print(f'step: {step}   loss: {l1_sum}')
-    except:
-        print("End of dataset")
-        break
-save_ckpt(sess, args.save_path, global_step=step)
-del model
+with tf.Session() as sess:
+    inputs = TFRecordLoader(features, 'examples/test.tfrecord', repeats=args.epoch)
+    batch_x = inputs.load_batch(args.batch_size)
+
+    model = YouTubeRank(args, features, batch_x, 0.8)
+    model.train()
+    sess.run(tf.global_variables_initializer())
+    l1_sum, step = 0, 0
+    while True:
+        try:
+            l1, _ = sess.run([model.loss, model.train_op])
+            l1_sum += l1
+            step += 1
+            if step % 10 == 0:
+                print(f'step: {step}   loss: {l1_sum}')
+        except:
+            print("End of dataset")
+            break
+    save_ckpt(sess, args.save_path, global_step=step)
+
 
 # test
-batch_x = TFRecordLoader(features, 'examples/test.tfrecord', repeats=args.epoch).load_batch(args.batch_size)
 out_cols = ['id', 'label']
-tf.reset_default_graph()
-graph = tf.get_default_graph()
-sess = tf.Session(graph=graph)
 args.bn_training = False
-model = YouTubeRank(args, features, batch_x, 1.0)
-model.test(out_cols)
-sess.run(tf.global_variables_initializer())
-sess = load_ckpt(sess, args.save_path)
-output = sess.run(model.output)
-print(output)
+
+tf.reset_default_graph()
+with tf.Session() as sess:
+    batch_x = TFRecordLoader(features, 'examples/test.tfrecord', repeats=args.epoch).load_batch(args.batch_size)
+
+    model = YouTubeRank(args, features, batch_x, 1.0)
+    model.test(out_cols)
+    sess.run(tf.global_variables_initializer())
+
+    sess = load_ckpt(sess, args.save_path)
+    output = sess.run(model.output)
+    print(output)
+
 
 # ckpt转pb
 ckpt2pb(args, features, YouTubeRank, out_name='pred')
+
 
 # 加载pb并预测
 path = os.path.join(args.save_path, args.model_name)
