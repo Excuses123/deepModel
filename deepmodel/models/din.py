@@ -1,6 +1,6 @@
 
 import tensorflow.compat.v1 as tf
-from ..core.layers import DNN
+from ..core.layers import fc_layer
 from ..core.sequence import AttentionSequencePoolingLayer
 
 
@@ -60,7 +60,7 @@ class DIN(object):
             [model_emb, version_emb, connectiontype_emb, hist_att_emb, gameid_emb, gameid_feat, last_emb],
             axis=-1)  # (batch, 226)
 
-        outputs = DNN(hidden_units=[512, 256, 128], keep_prob=self.args.keep_prob, name='DNN').run(inputs)
+        outputs = fc_layer(inputs, hidden_units=[512, 256, 128], keep_prob=self.args.keep_prob)
 
         self.logits_click = tf.layers.dense(outputs, 2, activation=tf.nn.relu, name="logits_click")
         self.logits_download = tf.layers.dense(outputs, 2, activation=tf.nn.relu, name="logits_download")

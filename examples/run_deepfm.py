@@ -8,6 +8,7 @@ class Args(object):
     epoch = 10
     batch_size = 32
     learning_rate = 0.001
+    bn_training = True
 
 features = [
     Feature(name='id', dtype='string', dim=1, for_train=False),
@@ -44,6 +45,7 @@ while True:
         break
 
 out_cols = ['id', 'label']
+args.bn_training = False
 model = DeepFM(args, features, batch_x, 1.0)
 model.test(out_cols)
 sess = tf.Session()

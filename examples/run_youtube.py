@@ -10,6 +10,7 @@ class Args(object):
     hidden_units = [512, 256]
     batch_size = 32
     learning_rate = 0.001
+    bn_training = True
     save_path = './examples/checkpoint'
     model_name = 'test.pb'
 
@@ -54,6 +55,7 @@ out_cols = ['id', 'label']
 tf.reset_default_graph()
 graph = tf.get_default_graph()
 sess = tf.Session(graph=graph)
+args.bn_training = False
 model = YouTubeRank(args, features, batch_x, 1.0)
 model.test(out_cols)
 sess.run(tf.global_variables_initializer())
@@ -66,8 +68,8 @@ ckpt2pb(args, features, YouTubeRank, out_name='pred')
 
 # 加载pb并预测
 path = os.path.join(args.save_path, args.model_name)
-pd_loader = load_pb(path, features, out_name='pred')
-pd_loader.predict(feed_dict={
+pb_loader = load_pb(path, features, out_name='pred')
+pb_loader.predict(feed_dict={
     'a': [2, 0, 5],
     'b': [40, 12, 4],
     'c': [[3, 42, 80], [9, 25, 0], [81, 0, 0]],

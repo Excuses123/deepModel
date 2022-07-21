@@ -1,7 +1,6 @@
 
 import tensorflow.compat.v1 as tf
-from ..core.layers import DNN
-from ..core.sequence import SequencePoolingLayer
+from ..core.layers import fc_layer, pool_layer
 
 
 class YouTubeRecall(object):
@@ -45,7 +44,7 @@ class YouTubeRecall(object):
                                                else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
                 shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
                 if feat.dim == 2:
-                    f_emb = SequencePoolingLayer().run(f_emb, self.batch[f'{feat.name}_len'])
+                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'])
                 concat_list.append(f_emb)
                 concat_dim += shape[1]
             else:
@@ -55,7 +54,7 @@ class YouTubeRecall(object):
 
         inputs = tf.reshape(tf.concat(concat_list, axis=-1), [-1, concat_dim])
 
-        outputs = DNN(hidden_units=self.args.hidden_units, keep_prob=self.keep_prob).run(inputs)
+        outputs = fc_layer(inputs, hidden_units=self.args.hidden_units, use_bn=True, training=self.args.bn_training, keep_prob=self.keep_prob)
 
         self.user_emb = tf.layers.dense(outputs, self.args.embedding_size, activation=tf.nn.relu, name="user_v")
 
@@ -127,7 +126,7 @@ class YouTubeRank(object):
                                                else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
                 shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
                 if feat.dim == 2:
-                    f_emb = SequencePoolingLayer().run(f_emb, self.batch[f'{feat.name}_len'])
+                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'])
                 concat_list.append(f_emb)
                 concat_dim += shape[1]
             else:
@@ -137,7 +136,7 @@ class YouTubeRank(object):
 
         inputs = tf.reshape(tf.concat(concat_list, axis=-1), [-1, concat_dim])
 
-        outputs = DNN(hidden_units=self.args.hidden_units, use_bn=True, keep_prob=self.keep_prob).run(inputs)
+        outputs = fc_layer(inputs, hidden_units=self.args.hidden_units, use_bn=True, training=self.args.bn_training, keep_prob=self.keep_prob)
 
         self.logits = tf.layers.dense(outputs, 2, activation=None, name="logits")
 

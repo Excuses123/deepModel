@@ -1,4 +1,5 @@
 import tensorflow.compat.v1 as tf
+from ..core.layers import fc_layer
 
 
 class DeepFM(object):
@@ -75,12 +76,8 @@ class DeepFM(object):
         # tf.nn.embedding_lookup(v, self.feature_inds)  shape: (batch, field_num * k)
         dnn_emb = tf.concat(x1, axis=1)
 
-        bn = tf.layers.batch_normalization(inputs=dnn_emb, name="b1")
-        fc_1 = tf.layers.dense(bn, 512, activation=tf.nn.relu, name='f1')
-        fc_1 = tf.nn.dropout(fc_1, keep_prob=self.keep_prob)
-        fc_2 = tf.layers.dense(fc_1, 256, activation=tf.nn.relu, name='f2')
-        fc_2 = tf.nn.dropout(fc_2, keep_prob=self.keep_prob)
-        self.y_dnn = tf.layers.dense(fc_2, 1, use_bias=False, activation=None, name="y_dnn")
+        dnn_emb = fc_layer(dnn_emb, hidden_units=[512, 256], use_bn=True, training=self.args.bn_training, keep_prob=0.8)
+        self.y_dnn = tf.layers.dense(dnn_emb, 1, use_bias=False, activation=None, name="y_dnn")
 
         # 输出
         self.logits = tf.add(self.y_fm, self.y_dnn)

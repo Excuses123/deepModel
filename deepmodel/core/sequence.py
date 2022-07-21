@@ -4,7 +4,7 @@ Author: Lujie
 """
 
 import tensorflow.compat.v1 as tf
-from .layers import DNN
+from .layers import fc_layer
 
 class SequencePoolingLayer(object):
     """
@@ -118,7 +118,7 @@ class AttentionSequencePoolingLayer(object):
         atten_input = tf.concat([gameid_emb, hist_emb, gameid_emb - hist_emb, gameid_emb * hist_emb],
                                 axis=-1)  # (batch, sl, embedding_size * 4)
 
-        dnn = DNN(hidden_units=self.att_hidden_units, activation=self.att_activation, name='att_dnn').run(atten_input)
+        dnn = fc_layer(atten_input, hidden_units=self.att_hidden_units, activation=self.att_activation, name='att_dnn')
         att_score = tf.layers.dense(dnn, 1, activation=None, name='dnn3')
         outputs = tf.transpose(att_score, (0, 2, 1))  # (batch, 1, sl)
 
