@@ -1,3 +1,10 @@
+# -*- coding:utf-8 -*-
+"""
+Author:
+    LuJie, 597906300@qq.com
+"""
+
+
 import numpy as np
 import tensorflow.compat.v1 as tf
 from keras.utils import to_categorical

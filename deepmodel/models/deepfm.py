@@ -1,3 +1,10 @@
+# -*- coding:utf-8 -*-
+"""
+Author:
+    LuJie, 597906300@qq.com
+"""
+
+
 import tensorflow.compat.v1 as tf
 from ..core.layers import fc_layer
 
