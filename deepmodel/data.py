@@ -24,13 +24,15 @@ class Feature(object):
             'emb_size',
             'emb_share',
             'feat_size',
-            'for_train'
+            'for_train',
+            'attention'
         }
         # Validate optional keyword arguments.
         generic_utils.validate_kwargs(kwargs, allowed_kwargs)
         self.emb_count = kwargs.pop('emb_count', None)
         self.feat_size = kwargs.pop('feat_size', 1)
         self.emb_share = kwargs.pop('emb_share', None)
+        self.attention = kwargs.pop('attention', None)
 
         if 'for_train' in kwargs:
             self.for_train = kwargs['for_train']

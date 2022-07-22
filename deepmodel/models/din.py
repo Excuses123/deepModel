@@ -1,96 +1,95 @@
-
 import tensorflow.compat.v1 as tf
-from ..core.layers import fc_layer
-from ..core.sequence import AttentionSequencePoolingLayer
+from ..core.layers import fc_layer, pool_layer, attention_layer
+from ..core.activation import dice
 
 
 class DIN(object):
-    def __init__(self, args, batch_x, flag):
+
+    def __init__(self, args, features, batch, keep_prob, label='label'):
+
         self.args = args
-        self.hist_click = batch_x['gameids']
-        self.weights = batch_x['weights']
-        self.click_len = batch_x['click_len']
-        self.last_click = batch_x['last_click']
+        self.features = features
+        self.batch = batch
+        self.keep_prob = keep_prob
 
-        self.modelid = batch_x['model']
-        self.version = batch_x['version']
-        self.connectiontype = batch_x['connectiontype']
+        self.train_feat = []
+        self.emb_feat = []
+        self.din_feat = {}
+        for feature in features:
+            if feature.for_train:
+                if feature.attention:
+                    self.din_feat[feature.attention] = feature
+                else:
+                    self.train_feat.append(feature)
+            if feature.emb_count:
+                self.emb_feat.append(feature)
 
-        self.gameid = batch_x['gameid']
-        if flag == "pred":
-            game_feat_w = tf.constant(self.args.game_features, dtype=tf.float32, name="game_features")
-            self.dense_features = tf.gather(game_feat_w, self.gameid)
-            self.build_model()
-            self.pred()
-        else:
-            self.isclick = batch_x['isclick']
-            self.isdownload = batch_x['isdownload']
-            self.dense_features = batch_x['dense_features']
-            self.build_model()
-            self.train() if flag == "train" else self.test()
+        self.label = batch[label]
+
+        self.build_model()
+
 
     def build_model(self):
-        # init embedding
-        self.gameid_emb_w = tf.get_variable("gameid_emb_w", [self.args.gameid_count, self.args.embedding_size])
-        self.model_emb_w = tf.get_variable("model_emb_w", [self.args.model_count, 15])
-        self.version_emb_w = tf.get_variable("version_emb_w", [self.args.version_count, 10])
-        self.connectiontype_emb_w = tf.get_variable("connectiontype_emb_w", [self.args.connectiontype_count, 5])
 
-        gameid_feat = tf.layers.dense(tf.reshape(self.dense_features, [-1, 4]), 4, activation=None,
-                                      name='missing_value_layer')
+        self.embeddings = {}
+        for feat in self.emb_feat:
+            shape = [feat.emb_count, feat.emb_size]
+            self.embeddings[f'{feat.name}_emb'] = (tf.get_variable(f'{feat.name}_emb', shape=shape), shape)
 
-        # 用户行为序列
-        hist_emb = tf.nn.embedding_lookup(self.gameid_emb_w,
-                                          self.hist_click)  # (batch, sl, embedding_size) #sl=max(click_len)
-        # 待排序游戏
-        gameid_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.gameid)  # (batch, embedding_size)
-        last_emb = tf.nn.embedding_lookup(self.gameid_emb_w, self.last_click)
+        concat_list, concat_dim = [], 0
+        for feat in self.train_feat:
+            if feat.dtype.startswith('int'):
+                f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
+                                               else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
+                shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else \
+                    self.embeddings[f'{feat.name}_emb'][1]
+                if feat.dim == 2:
+                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'])
+                concat_list.append(f_emb)
+                concat_dim += shape[1]
+            else:
+                f_emb = tf.reshape(self.batch[feat.name], [-1, 1]) if feat.dim < 2 else self.batch[feat.name]
+                concat_list.append(f_emb)
+                concat_dim += feat.feat_size
 
-        # attention polling  "a(Ej,Va)Ej = WjEj"
-        hist_att_emb = AttentionSequencePoolingLayer(att_hidden_units=[80, 40], att_activation='dice').run(hist_emb,
-                                                                                                       gameid_emb,
-                                                                                                       self.click_len)
+        self.din_emb = {}
+        for k, feat in self.din_feat.items():
+            self.din_emb[f'{k}_emb'] = tf.nn.embedding_lookup(
+                self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][
+                    0], self.batch[feat.name])
 
-        # user profile
-        model_emb = tf.nn.embedding_lookup(self.model_emb_w, self.modelid)
-        version_emb = tf.nn.embedding_lookup(self.version_emb_w, self.version)
-        connectiontype_emb = tf.nn.embedding_lookup(self.connectiontype_emb_w, self.connectiontype)
+        att_emb = attention_layer(key=self.din_emb['key_emb'],
+                                  query=self.din_emb['query_emb'],
+                                  mask=self.batch[f"{self.din_feat['key'].name}_len"],
+                                  hidden_units=[80, 40], activation=dice)
+        concat_list.append(att_emb)
 
-        inputs = tf.concat(
-            [model_emb, version_emb, connectiontype_emb, hist_att_emb, gameid_emb, gameid_feat, last_emb],
-            axis=-1)  # (batch, 226)
+        concat_dim += self.embeddings[f"{self.din_feat['key'].emb_share}_emb"][1][1] if self.din_feat['key'].emb_share \
+            else self.embeddings[f'{self.din_feat["key"].name}_emb'][1][1]
 
-        outputs = fc_layer(inputs, hidden_units=[512, 256, 128], keep_prob=self.args.keep_prob)
+        inputs = tf.reshape(tf.concat(concat_list, axis=-1), [-1, concat_dim])
 
-        self.logits_click = tf.layers.dense(outputs, 2, activation=tf.nn.relu, name="logits_click")
-        self.logits_download = tf.layers.dense(outputs, 2, activation=tf.nn.relu, name="logits_download")
+        outputs = fc_layer(inputs, hidden_units=self.args.hidden_units, use_bn=True, training=self.args.bn_training,
+                           keep_prob=self.keep_prob)
+
+        self.logits = tf.layers.dense(outputs, 2, activation=None, name="logits")
+
+        self.pred = tf.nn.softmax(self.logits)[:, 1]
+
 
     def train(self):
-        self.click_loss = tf.reduce_mean(
-            tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits_click, labels=self.isclick))
-        self.download_loss = tf.reduce_mean(
-            tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits_download, labels=self.isdownload))
-        self.joint_loss = self.click_loss + self.download_loss
-        tf.summary.scalar("loss", self.joint_loss)
-        # Step variable
+        self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits,
+                                                                                  labels=tf.cast(self.label, tf.int32)))
+        tf.summary.scalar("loss", self.loss)
         self.global_step = tf.Variable(0, trainable=False, name="global_step")
+
         optimizer = tf.train.AdamOptimizer(learning_rate=self.args.learning_rate)
-        self.train_op = optimizer.minimize(self.joint_loss, global_step=self.global_step)
+        self.train_op = optimizer.minimize(self.loss, global_step=self.global_step)
 
-    def test(self):
+
+    def test(self, cols):
         self.output = {
-            'isclick': self.isclick,
-            'isdownload': self.isdownload,
-            'pred_click': tf.nn.softmax(self.logits_click)[:, 1],
-            'pred_download': tf.nn.softmax(self.logits_download)[:, 1],
-            'gameid': tf.gather(self.args.gameid_key, self.gameid),
-            'model': tf.gather(self.args.model_key, self.modelid),
-            'version': tf.gather(self.args.version_key, self.version),
-            'connectiontype': tf.gather(self.args.connectiontype_key, self.connectiontype)
+            'pred_label': self.pred
         }
-
-    def pred(self):
-        self.gameid = tf.gather(self.args.gameid_key, self.gameid)
-        self.pred_click = tf.nn.softmax(self.logits_click, name="pred_click")[:, 1]
-        self.pred_download = tf.nn.softmax(self.logits_download, name="pred_download")[:, 1]
-
+        for col in cols:
+            self.output[col] = self.batch[col]
