@@ -51,10 +51,12 @@ class YouTubeRecall(object):
                 f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
                                                else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
                 shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
+                if feat.dim == 1 and f'{feat.name}_len' in self.batch:
+                    f_emb *= tf.expand_dims(self.batch[f'{feat.name}_len'], 1)
                 if feat.dim == 2:
                     weight = None
                     if self.args.contains('use_weight'):
-                        weight = self.batch[f'{feat.name}_weight'] if self.args.weight else weight
+                        weight = self.batch.get(f'{feat.name}_weight', None) if self.args.use_weight else weight
                     f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'], weight=weight)
                 concat_list.append(f_emb)
                 concat_dim += shape[1]
@@ -160,10 +162,12 @@ class YouTubeRank(object):
                 f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
                                                else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
                 shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
+                if feat.dim == 1 and f'{feat.name}_len' in self.batch:
+                    f_emb *= tf.expand_dims(self.batch[f'{feat.name}_len'], 1)
                 if feat.dim == 2:
                     weight = None
                     if self.args.contains('use_weight'):
-                        weight = self.batch[f'{feat.name}_weight'] if self.args.weight else weight
+                        weight = self.batch.get(f'{feat.name}_weight', None) if self.args.use_weight else weight
                     f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'], weight=weight)
                 concat_list.append(f_emb)
                 concat_dim += shape[1]

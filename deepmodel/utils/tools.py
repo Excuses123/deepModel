@@ -6,8 +6,27 @@ Author:
 
 
 import os
+import time
+import numpy as np
 import tensorflow.compat.v1 as tf
 from tensorflow.python.platform import gfile
+
+
+def choice_gpu(memory=1024):
+    """选择当前空闲内存最大的gpu
+    memory: Int, 选择gpu内存的最小阈值 单位m.
+    """
+    while True:
+        os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free > gpu_tmp')
+        gpu_memory = [int(x.split()[2]) for x in open('gpu_tmp', 'r').readlines()]
+        os.system('rm gpu_tmp')
+
+        gpu = np.argmax(gpu_memory)
+        if gpu_memory[gpu] >= memory:
+            break
+        time.sleep(60)
+    return gpu
+
 
 def save_ckpt(sess, save_path, global_step, name='model'):
     saver = tf.train.Saver()
