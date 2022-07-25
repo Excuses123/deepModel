@@ -12,8 +12,15 @@ from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 
 
 class Feature(object):
-    """ 特征信息类 """
-
+    """ 特征信息类
+    # Arguments
+        name: String, 特征类名.
+        name_from: String, 源数据对应的特征名.
+        dtype: String, 返回的数据类型.
+        dtype_from: String, 源数据类型.
+        dim: Int, 特征纬度.
+        dense: Boolean, 是否转换为稠密特征.
+    """
     def __init__(self, name, name_from=None, dtype='int64',
                  dtype_from=None, dim=1, dense=False, **kwargs):
         self.name = name

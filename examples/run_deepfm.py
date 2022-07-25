@@ -69,6 +69,7 @@ with tf.Session() as sess:
         print(output)
 
 # ckpt转pb
+args.bn_training = False
 ckpt2pb(args, features, DeepFM)
 
 

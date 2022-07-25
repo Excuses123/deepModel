@@ -68,6 +68,7 @@ with tf.Session() as sess:
 
 
 # ckpt转pb
+args.bn_training = False
 ckpt2pb(args, features, DIN)
 
 
