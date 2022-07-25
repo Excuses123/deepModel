@@ -113,7 +113,7 @@ class DIN(object):
         }
 
         if self.args.contains('item_key'):
-            self.item = tf.cast(self.train_feat[self.item_name], dtype=tf.int32)
+            self.item = tf.cast(self.batch[self.item_name], dtype=tf.int32)
             self.item_key = tf.gather(self.args.item_key, self.item)
 
             self.output['item'] = self.item

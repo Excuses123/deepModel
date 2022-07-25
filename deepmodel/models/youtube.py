@@ -100,7 +100,7 @@ class YouTubeRecall(object):
         }
 
         if self.args.contains('item_key'):
-            self.output['pred_topn_key'] = tf.gather(self.args.id_key, self.pred_topn)
+            self.output['pred_topn_key'] = tf.gather(self.args.item_key, self.pred_topn)
 
         for col in cols:
             self.output[col] = self.batch[col]
@@ -196,13 +196,12 @@ class YouTubeRank(object):
             self.output[col] = self.batch[col]
 
     def pred(self):
-
         self.output = {
             'probability': self.probability
         }
 
         if self.args.contains('item_key'):
-            self.item = tf.cast(self.train_feat[self.item_name], dtype=tf.int32)
+            self.item = tf.cast(self.batch[self.item_name], dtype=tf.int32)
             self.item_key = tf.gather(self.args.item_key, self.item)
 
             self.output['item'] = self.item
