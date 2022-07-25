@@ -20,7 +20,7 @@ args = Param(
 )
 
 features = [
-    Feature(name='id', dtype='string', dim=1, for_train=False),
+    Feature(name='uid', name_from='id', dtype='string', dim=1, for_train=False),
     Feature(name='a', dtype='int32', dim=1, emb_count=11, emb_size=5),
     Feature(name='b', dtype='int64', dim=1, emb_count=101, emb_size=10),
     Feature(name='c', dtype='int64', dim=2, dense=True, emb_share='b'),
@@ -85,7 +85,7 @@ args = Param(
 )
 
 features = [
-    Feature(name='id', dtype='string', dim=1, for_train=False),
+    Feature(name='uid', name_from='id', dtype='string', dim=1, for_train=False),
     Feature(name='a', dtype='int32', dim=1, emb_count=11, emb_size=5),
     Feature(name='b', dtype='int64', dim=1, emb_count=101, emb_size=10),
     Feature(name='c', dtype='int64', dim=2, dense=True, emb_share='b'),

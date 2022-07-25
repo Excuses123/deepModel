@@ -14,8 +14,10 @@ from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 class Feature(object):
     """ 特征信息类 """
 
-    def __init__(self, name, dtype='int64', dim=1, dense=False, **kwargs):
+    def __init__(self, name, name_from=None, dtype='int64', dim=1, dense=False, **kwargs):
         self.name = name
+        self.name_from = name \
+            if name_from is None else name_from
         self.dtype = dtype
         self.dim = dim
         self.dense = dense
@@ -68,7 +70,7 @@ class TFRecordLoader(object):
         self.keepDim = []
         self.dicts = {}
         for feature in self.features:
-            name = feature.name
+            name = feature.name_from
             if feature.dim == 1:
                 self.dicts[name] = tf.FixedLenFeature([1], dtype=self.dtype(feature.dtype))
                 self.keepDim.append(name)
@@ -101,7 +103,7 @@ class TFRecordLoader(object):
             batch_x[feat] = batch_x[feat][:, 0]
 
         for feat in self.features:
-            batch_x[feat.name] = tf.cast(batch_x[feat.name], feat.dtype)
+            batch_x[feat.name] = tf.cast(batch_x.pop(feat.name_from), feat.dtype)
 
         return batch_x
 
