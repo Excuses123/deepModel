@@ -13,6 +13,7 @@ args = Param(
     learning_rate=0.001,
     hidden_units=[512, 256],
     bn_training=True,
+    use_weight=True,
     topK=5,
     model_path='./examples/checkpoint',
     model_name='test.pb',
@@ -22,12 +23,13 @@ args = Param(
 features = [
     Feature(name='uid', name_from='id', dtype='string', dim=1, for_train=False),
     Feature(name='a', dtype='int32', dim=1, emb_count=11, emb_size=5),
+    Feature(name='a_len', name_from='f', dtype='float32', dtype_from='int64', dim=1),
     Feature(name='b', dtype='int64', dim=1, emb_count=101, emb_size=10),
     Feature(name='c', dtype='int64', dim=2, dense=True, emb_share='b'),
+    Feature(name='c_weight', dtype='int64', dim=2, dense=True, for_train=False),
     Feature(name='c_len', dtype='int64', dim=1, for_train=False),
     Feature(name='d', dtype='float32', dim=1),
     Feature(name='e', dtype='float32', dim=2, feat_size=10, dense=True),
-    Feature(name='f', dtype='float32', dtype_from='int64', dim=1),
     Feature(name='recall', dtype='int64', dim=2, dense=True, for_train=False, label=True)
 ]
 
@@ -80,6 +82,7 @@ args = Param(
     learning_rate=0.001,
     hidden_units=[512, 256],
     bn_training=True,
+    use_weight=True,
     model_path='./examples/checkpoint',
     model_name='test.pb',
     item_name='b'
@@ -88,12 +91,13 @@ args = Param(
 features = [
     Feature(name='uid', name_from='id', dtype='string', dim=1, for_train=False),
     Feature(name='a', dtype='int32', dim=1, emb_count=11, emb_size=5),
+    Feature(name='a_len', name_from='f', dtype='float32', dtype_from='int64', dim=1),
     Feature(name='b', dtype='int64', dim=1, emb_count=101, emb_size=10),
     Feature(name='c', dtype='int64', dim=2, dense=True, emb_share='b'),
+    Feature(name='c_weight', dtype='int64', dim=2, dense=True, for_train=False),
     Feature(name='c_len', dtype='int64', dim=1, for_train=False),
     Feature(name='d', dtype='float32', dim=1),
     Feature(name='e', dtype='float32', dim=2, feat_size=10, dense=True),
-    Feature(name='f', dtype='float32', dtype_from='int64', dim=1),
     Feature(name='label', dtype='float32', dim=1, for_train=False, label=True),
     Feature(name='label2', dtype='float32', dim=1, for_train=False, label=True)
 ]
@@ -150,8 +154,10 @@ path = os.path.join(args.model_path, args.model_name)
 pb_loader = load_pb(path, features, out_name='probability')
 pb_loader.predict(feed_dict={
     'a': [2, 0, 5],
+    'a_len': [1, 0, 1],
     'b': [40, 12, 4],
     'c': [[3, 42, 80], [9, 25, 0], [81, 0, 0]],
+    'c_weight': [[3, 1, 2], [1, 3, 0], [3, 0, 0]],
     'c_len': [3, 2, 1],
     'd': [0.49, 0.123, 0.667],
     'e': [[0.48, 0.817, 0.5465, 0.913, 0.979, 0.931, 0.343, 0.364, 0.622, 0.318],

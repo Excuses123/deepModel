@@ -25,6 +25,7 @@ def gen_test_data(num_sample=1000):
         'label2': [random.randint(0, 1) for _ in range(num_sample)]
     }
     featMap['c_len'] = list(map(len, featMap['c']))
+    featMap['c_weight'] = [[random.randint(1, 5) for _ in range(l)] for l in featMap['c_len']]
 
     return pd.DataFrame(featMap)
 
@@ -35,6 +36,7 @@ features = [
     Feature(name='a', dtype='int32', dim=1),
     Feature(name='b', dtype='int64', dim=1),
     Feature(name='c', dtype='int64', dim=2, dense=True),
+    Feature(name='c_weight', dtype='int64', dim=2, dense=True),
     Feature(name='c_len', dtype='int64', dim=1),
     Feature(name='d', dtype='float32', dim=1),
     Feature(name='e', dtype='float64', dim=2, dense=True),
