@@ -53,7 +53,10 @@ class DIN(object):
                 shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else \
                     self.embeddings[f'{feat.name}_emb'][1]
                 if feat.dim == 2:
-                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'])
+                    weight = None
+                    if self.args.contains('use_weight'):
+                        weight = self.batch[f'{feat.name}_weight'] if self.args.weight else weight
+                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'], weight=weight)
                 concat_list.append(f_emb)
                 concat_dim += shape[1]
             else:

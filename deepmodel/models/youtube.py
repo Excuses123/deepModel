@@ -52,7 +52,10 @@ class YouTubeRecall(object):
                                                else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
                 shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
                 if feat.dim == 2:
-                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'])
+                    weight = None
+                    if self.args.contains('use_weight'):
+                        weight = self.batch[f'{feat.name}_weight'] if self.args.weight else weight
+                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'], weight=weight)
                 concat_list.append(f_emb)
                 concat_dim += shape[1]
             else:
@@ -148,6 +151,7 @@ class YouTubeRank(object):
         self.embeddings = {}
         for feat in self.emb_feat:
             shape = [feat.emb_count, feat.emb_size]
+            # todo 支持指定embedding初始化
             self.embeddings[f'{feat.name}_emb'] = (tf.get_variable(f'{feat.name}_emb', shape=shape), shape)
 
         concat_list, concat_dim = [], 0
@@ -157,7 +161,10 @@ class YouTubeRank(object):
                                                else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
                 shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
                 if feat.dim == 2:
-                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'])
+                    weight = None
+                    if self.args.contains('use_weight'):
+                        weight = self.batch[f'{feat.name}_weight'] if self.args.weight else weight
+                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'], weight=weight)
                 concat_list.append(f_emb)
                 concat_dim += shape[1]
             else:
