@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="deepModel",
-    version="0.0.6",
+    version="0.0.7",
     author="lujie",
     author_email="597906300@qq.com",
     description="This is a toolkit for deep learning development",
