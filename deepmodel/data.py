@@ -26,7 +26,8 @@ class Feature(object):
             'emb_share',
             'feat_size',
             'for_train',
-            'attention'
+            'attention',
+            'label'
         }
         # Validate optional keyword arguments.
         generic_utils.validate_kwargs(kwargs, allowed_kwargs)
@@ -44,6 +45,11 @@ class Feature(object):
             self.emb_size = kwargs['emb_size']
         else:
             self.emb_size = 1
+
+        if 'label' in kwargs:
+            self.label = kwargs['label']
+        else:
+            self.label = False
 
 
 class TFRecordLoader(object):
