@@ -14,11 +14,14 @@ from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 class Feature(object):
     """ 特征信息类 """
 
-    def __init__(self, name, name_from=None, dtype='int64', dim=1, dense=False, **kwargs):
+    def __init__(self, name, name_from=None, dtype='int64',
+                 dtype_from=None, dim=1, dense=False, **kwargs):
         self.name = name
         self.name_from = name \
             if name_from is None else name_from
         self.dtype = dtype
+        self.dtype_from = dtype \
+            if dtype_from is None else dtype_from
         self.dim = dim
         self.dense = dense
 
@@ -72,10 +75,10 @@ class TFRecordLoader(object):
         for feature in self.features:
             name = feature.name_from
             if feature.dim == 1:
-                self.dicts[name] = tf.FixedLenFeature([1], dtype=self.dtype(feature.dtype))
+                self.dicts[name] = tf.FixedLenFeature([1], dtype=self.dtype(feature.dtype_from))
                 self.keepDim.append(name)
             else:
-                self.dicts[name] = tf.VarLenFeature(dtype=self.dtype(feature.dtype))
+                self.dicts[name] = tf.VarLenFeature(dtype=self.dtype(feature.dtype_from))
                 if feature.dense:
                     self.toDense.append(name)
 
