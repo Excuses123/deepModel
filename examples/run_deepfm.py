@@ -45,7 +45,7 @@ with tf.Session() as sess:
             l3_sum += l3
             step += 1
             if step % 10 == 0:
-                print(f'step: {step}   loss: {l1_sum}    log_loss: {l2_sum}   mse_loss: {l3_sum}')
+                print(f'step: {step}   loss: {l1_sum/step:.4f}    log_loss: {l2_sum/step:.4f}   mse_loss: {l3_sum/step:.4f}')
         except:
             print("End of dataset")
             break

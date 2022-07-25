@@ -43,7 +43,7 @@ with tf.Session() as sess:
             l1_sum += l1
             step += 1
             if step % 10 == 0:
-                print(f'step: {step}   loss: {l1_sum}')
+                print(f'step: {step}   loss: {l1_sum/step:.4f}')
         except:
             print("End of dataset")
             break

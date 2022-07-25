@@ -27,6 +27,7 @@ features = [
     Feature(name='c_len', dtype='int64', dim=1, for_train=False),
     Feature(name='d', dtype='float32', dim=1),
     Feature(name='e', dtype='float32', dim=2, feat_size=10, dense=True),
+    Feature(name='f', dtype='float32', dtype_from='int64', dim=1),
     Feature(name='recall', dtype='int64', dim=2, dense=True, for_train=False, label=True)
 ]
 
@@ -46,7 +47,7 @@ with tf.Session() as sess:
             l1_sum += l1
             step += 1
             if step % 10 == 0:
-                print(f'step: {step}   loss: {l1_sum}')
+                print(f'step: {step}   loss: {l1_sum/step:.4f}')
         except:
             print("End of dataset")
             break
@@ -54,7 +55,7 @@ with tf.Session() as sess:
 
 
 # test
-out_cols = ['id', 'recall']
+out_cols = ['uid', 'recall']
 args.bn_training = False
 
 tf.reset_default_graph()
@@ -92,6 +93,7 @@ features = [
     Feature(name='c_len', dtype='int64', dim=1, for_train=False),
     Feature(name='d', dtype='float32', dim=1),
     Feature(name='e', dtype='float32', dim=2, feat_size=10, dense=True),
+    Feature(name='f', dtype='float32', dtype_from='int64', dim=1),
     Feature(name='label', dtype='float32', dim=1, for_train=False, label=True),
     Feature(name='label2', dtype='float32', dim=1, for_train=False, label=True)
 ]
@@ -113,7 +115,7 @@ with tf.Session() as sess:
             l2_sum += l2
             step += 1
             if step % 10 == 0:
-                print(f'step: {step}   loss: {l_sum}   loss1: {l1_sum}   loss2: {l2_sum}')
+                print(f'step: {step}   loss: {l_sum/step:.4f}   loss1: {l1_sum/step:.4f}   loss2: {l2_sum/step:.4f}')
         except:
             print("End of dataset")
             break
@@ -121,7 +123,7 @@ with tf.Session() as sess:
 
 
 # test
-out_cols = ['id', 'label']
+out_cols = ['uid', 'label']
 args.bn_training = False
 
 tf.reset_default_graph()
@@ -144,7 +146,7 @@ ckpt2pb(args, features, YouTubeRank)
 
 # 加载pb并预测
 path = os.path.join(args.model_path, args.model_name)
-pb_loader = load_pb(path, features, out_name='item_key')
+pb_loader = load_pb(path, features, out_name='probability')
 pb_loader.predict(feed_dict={
     'a': [2, 0, 5],
     'b': [40, 12, 4],
