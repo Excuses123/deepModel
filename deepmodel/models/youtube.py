@@ -13,13 +13,13 @@ class YouTubeRecall(object):
     """
     youtube recall model
     """
-    def __init__(self, args, features, batch, keep_prob, infer_feat, label='label'):
+    def __init__(self, args, features, batch, keep_prob):
 
         self.args = args
         self.features = features
         self.batch = batch
         self.keep_prob = keep_prob
-        self.infer_feat = infer_feat
+        self.item_name = args.item_name
 
         self.train_feat = []
         self.emb_feat = []
@@ -28,10 +28,11 @@ class YouTubeRecall(object):
                 self.train_feat.append(feature)
             if feature.emb_count:
                 self.emb_feat.append(feature)
-
-        self.label = batch[label]
+            if feature.label:
+                self.label = batch[feature.name]
 
         self.build_model()
+
 
     def build_model(self):
 
@@ -40,7 +41,8 @@ class YouTubeRecall(object):
             shape = [feat.emb_count, feat.emb_size]
             self.embeddings[f'{feat.name}_emb'] = (tf.get_variable(f'{feat.name}_emb', shape=shape), shape)
 
-        self.input_b = tf.get_variable("input_b", [1], initializer=tf.constant_initializer(0.0))
+        self.input_b = tf.get_variable("input_b", [self.embeddings[f'{self.item_name}_emb'][1][0]],
+                                       initializer=tf.constant_initializer(0.0))
 
         concat_list, concat_dim = [], 0
 
@@ -62,12 +64,19 @@ class YouTubeRecall(object):
 
         outputs = fc_layer(inputs, hidden_units=self.args.hidden_units, use_bn=True, training=self.args.bn_training, keep_prob=self.keep_prob)
 
-        self.user_emb = tf.layers.dense(outputs, self.args.embedding_size, activation=tf.nn.relu, name="user_v")
+        self.user_emb = tf.layers.dense(outputs, self.embeddings[f'{self.item_name}_emb'][1][1], activation=tf.nn.relu)
+
+        self.logits = tf.matmul(self.user_emb, self.embeddings[f'{self.item_name}_emb'][0], transpose_b=True) + self.input_b
+
+        self.probability = tf.nn.softmax(self.logits)
+
+        self.pred_topn = tf.nn.top_k(self.probability, self.args.topK).indices
+
 
     def train(self):
         y = tf.sequence_mask(tf.ones(tf.shape(self.label)[0]), tf.shape(self.label)[1], dtype=tf.float32)
-        sample_b = tf.nn.embedding_lookup(self.input_b, self.batch['label'])
-        sample_w = tf.concat([tf.nn.embedding_lookup(self.embeddings[f'{self.infer_feat}_emb'], self.batch['label'])], axis=2)
+        sample_b = tf.nn.embedding_lookup(self.input_b, self.label)
+        sample_w = tf.concat([tf.nn.embedding_lookup(self.embeddings[f'{self.item_name}_emb'][0], self.label)], axis=2)
 
         user_v = tf.expand_dims(self.user_emb, 1)
         sample_w = tf.transpose(sample_w, perm=[0, 2, 1])
@@ -82,39 +91,55 @@ class YouTubeRecall(object):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.args.learning_rate)
         self.train_op = optimizer.minimize(self.loss, global_step=self.global_step)
 
-    def test(self):
-        logits = tf.matmul(self.user_emb, self.embeddings[f'{self.infer_feat}_emb'], transpose_b=True) + self.input_b
-        pred = tf.nn.softmax(logits)
 
-        pred_topn = tf.gather(self.args.id_key, tf.nn.top_k(pred, k=self.args.recall_topN).indices)
+    def test(self, cols):
 
         self.output = {
-            'pred_topn': pred_topn,
-            'pred_topn_str': tf.reduce_join(tf.as_string(pred_topn), separator=",", axis=1),
-            'label': tf.gather(self.args.id_key, self.label)
+            'pred_topn': self.pred_topn,
+            'pred_topn_str': tf.reduce_join(tf.as_string(self.pred_topn), separator=",", axis=1)
         }
+
+        if self.args.contains('item_key'):
+            self.output['pred_topn_key'] = tf.gather(self.args.id_key, self.pred_topn)
+
+        for col in cols:
+            self.output[col] = self.batch[col]
+
+
+    def pred(self):
+
+        self.output = {
+            'user_emb': self.user_emb,
+            'probability': self.probability,
+            'pred_topn': self.pred_topn
+        }
+
+        if self.args.contains('item_key'):
+            self.output['pred_topn_key'] = tf.gather(self.args.item_key, self.pred_topn)
 
 
 class YouTubeRank(object):
     """
     youtube rank model
     """
-    def __init__(self, args, features, batch, keep_prob, label='label'):
+    def __init__(self, args, features, batch, keep_prob):
 
         self.args = args
         self.features = features
         self.batch = batch
         self.keep_prob = keep_prob
+        self.item_name = args.item_name
 
         self.train_feat = []
         self.emb_feat = []
+        self.label = []
         for feature in features:
             if feature.for_train:
                 self.train_feat.append(feature)
             if feature.emb_count:
                 self.emb_feat.append(feature)
-
-        self.label = batch[label]
+            if feature.label:
+                self.label.append(batch[feature.name])
 
         self.build_model()
 
@@ -142,15 +167,21 @@ class YouTubeRank(object):
 
         inputs = tf.reshape(tf.concat(concat_list, axis=-1), [-1, concat_dim])
 
-        outputs = fc_layer(inputs, hidden_units=self.args.hidden_units, use_bn=True, training=self.args.bn_training, keep_prob=self.keep_prob)
+        outputs = fc_layer(inputs, hidden_units=self.args.hidden_units, use_bn=True,
+                           training=self.args.bn_training, keep_prob=self.keep_prob)
 
-        self.logits = tf.layers.dense(outputs, 2, activation=None, name="logits")
+        self.logits = [tf.layers.dense(outputs, 2, activation=None, name=f"logits_label_{i}")
+                       for i in range(len(self.label))]
 
-        self.pred = tf.nn.softmax(self.logits)[:, 1]
+        self.probability_list = [tf.nn.softmax(logit)[:, 1] for logit in self.logits]
+
+        self.probability = tf.reduce_mean(self.probability_list, axis=0)
 
     def train(self):
-        self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits,
-                                                                                  labels=tf.cast(self.label, tf.int32)))
+        self.loss_list = [tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+            logits=self.logits[i], labels=tf.cast(label, tf.int32))) for i, label in enumerate(self.label)]
+        self.loss = tf.reduce_mean(self.loss_list)
+
         tf.summary.scalar("loss", self.loss)
         self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
@@ -159,11 +190,23 @@ class YouTubeRank(object):
 
     def test(self, cols):
         self.output = {
-            'pred_label': self.pred
+            'probability': self.probability
         }
         for col in cols:
             self.output[col] = self.batch[col]
 
+    def pred(self):
+
+        self.output = {
+            'probability': self.probability
+        }
+
+        if self.args.contains('item_key'):
+            self.item = tf.cast(self.train_feat[self.item_name], dtype=tf.int32)
+            self.item_key = tf.gather(self.args.item_key, self.item)
+
+            self.output['item'] = self.item
+            self.output['item_key'] = self.item_key
 
 
 

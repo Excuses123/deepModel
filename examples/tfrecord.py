@@ -19,7 +19,9 @@ def gen_test_data(num_sample=1000):
         'c': [[random.randint(0, 100) for _ in range(random.randint(1, 10))] for _ in range(num_sample)],
         'd': [random.random() for _ in range(num_sample)],
         'e': [[random.random() for _ in range(10)] for _ in range(num_sample)],
-        'label': [random.randint(0, 1) for _ in range(num_sample)]
+        'recall': [[random.randint(0, 100) for _ in range(5)] for _ in range(num_sample)],
+        'label': [random.randint(0, 1) for _ in range(num_sample)],
+        'label2': [random.randint(0, 1) for _ in range(num_sample)]
     }
     featMap['c_len'] = list(map(len, featMap['c']))
 
@@ -35,7 +37,9 @@ features = [
     Feature(name='c_len', dtype='int64', dim=1),
     Feature(name='d', dtype='float32', dim=1),
     Feature(name='e', dtype='float64', dim=2, dense=True),
-    Feature(name='label', dtype='float32', dim=1)
+    Feature(name='recall', dtype='int64', dim=2, dense=True),
+    Feature(name='label', dtype='float32', dim=1),
+    Feature(name='label2', dtype='float32', dim=1)
 ]
 
 

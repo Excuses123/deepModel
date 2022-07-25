@@ -27,7 +27,7 @@ def load_ckpt(sess, path):
     return sess
 
 
-def ckpt2pb(args, features, orgin_model, out_name, in_names=None):
+def ckpt2pb(args, features, orgin_model, out_names=None, in_names=None):
     tf.reset_default_graph()
     graph = tf.get_default_graph()
 
@@ -42,16 +42,23 @@ def ckpt2pb(args, features, orgin_model, out_name, in_names=None):
                                                    name=feature.name)
 
         model = orgin_model(args, features, batch_x, 1.0)
-        output = tf.identity(model.pred, name=out_name)
-        op_names.append(out_name)
+        model.pred()
+
+        output = {}
+        model_out = model.output
+        out_names = model_out.keys() if out_names is None \
+            else out_names
+        for out_name in out_names:
+            output[out_name] = tf.identity(model_out[out_name], name=out_name)
+            op_names.append(out_name)
 
     with tf.Session(graph=graph) as sess:
         sess.run(tf.global_variables_initializer())
-        sess = load_ckpt(sess, args.save_path)
+        sess = load_ckpt(sess, args.model_path)
 
         output_graph_def = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def, op_names)
 
-        tf.train.write_graph(output_graph_def, '.', args.save_path + '/' + args.model_name, as_text=False)
+        tf.train.write_graph(output_graph_def, '.', args.model_path + '/' + args.model_name, as_text=False)
 
 
 class load_pb(object):
