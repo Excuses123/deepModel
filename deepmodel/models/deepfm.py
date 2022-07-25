@@ -14,7 +14,7 @@ class DeepFM(object):
     deepfm model
     """
 
-    def __init__(self, args, features, batch, keep_prob, label='label'):
+    def __init__(self, args, features, batch, keep_prob):
         self.args = args
         self.features = features
         self.batch = batch
@@ -27,8 +27,9 @@ class DeepFM(object):
                 self.train_feat.append(feature)
             if feature.emb_count:
                 self.emb_feat.append(feature)
+            if feature.label:
+                self.label = batch[feature.name]
 
-        self.label = batch[label]
         self.build_model()
 
     def build_model(self):
@@ -88,39 +89,30 @@ class DeepFM(object):
 
         # 输出
         self.logits = tf.add(self.y_fm, self.y_dnn)
-        self.y_pred = tf.nn.sigmoid(self.logits)[:, 0]
+        self.probability = tf.nn.sigmoid(self.logits)[:, 0]
 
     def train(self):
         self.loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.logits[:, 0], labels=self.label))
-        self.log_loss = tf.losses.log_loss(self.label, self.y_pred)
-        self.mse_loss = tf.reduce_mean(tf.pow(self.label - self.y_pred, 2))
+        self.log_loss = tf.losses.log_loss(self.label, self.probability)
+        self.mse_loss = tf.reduce_mean(tf.pow(self.label - self.probability, 2))
+
         tf.summary.scalar("loss", self.loss)
-        # Step variable
+
         self.global_step = tf.Variable(0, trainable=False, name="global_step")
         optimizer = tf.train.AdamOptimizer(learning_rate=self.args.learning_rate)
         self.train_op = optimizer.minimize(self.loss, global_step=self.global_step)
 
     def test(self, cols):
         self.output = {
-            'pred_label': self.y_pred,
+            'probability': self.probability,
         }
         for col in cols:
             self.output[col] = self.batch[col]
 
-    def save(self, sess, path, global_step):
-        saver = tf.train.Saver()
-        saver.save(sess, save_path=path, global_step=global_step)
-
-    def load(self, sess, path):
-        saver = tf.train.Saver()
-        ckpt = tf.train.get_checkpoint_state(path)
-        if ckpt and ckpt.model_checkpoint_path:
-            step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-            saver.restore(sess, save_path=ckpt.model_checkpoint_path)
-            print("Load model of step %s success" % step)
-        else:
-            print("No checkpoint!")
-
+    def pred(self):
+        self.output = {
+            'probability': self.probability,
+        }
 
 def SeqsPool(embedding, item_seqs, click_len, keep_dims=False):
     seqs_emb = tf.nn.embedding_lookup(embedding, item_seqs)
