@@ -133,7 +133,7 @@ class TFRecordLoader(object):
 
 
 class DataFrameLoader(object):
-    """ 批量加载tfrecord数据 """
+    """ 生成dataframe批数据 """
 
     def __init__(self, features, data, repeats=1, shuffle_size=1, prefetch_size=1):
         self.features = features

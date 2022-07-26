@@ -60,6 +60,8 @@ def ckpt2pb(args, features, orgin_model, out_names=None, in_names=None):
             batch_x[feature.name] = tf.placeholder(feature.dtype, [None] if feature.dim == 1 else [None, None],
                                                    name=feature.name)
 
+        if args.contains('bn_training'):
+            args.bn_training = False
         model = orgin_model(args, features, batch_x, 1.0)
         model.pred()
 
@@ -77,7 +79,7 @@ def ckpt2pb(args, features, orgin_model, out_names=None, in_names=None):
 
         output_graph_def = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def, op_names)
 
-        tf.train.write_graph(output_graph_def, '.', args.model_path + '/' + args.model_name, as_text=False)
+        tf.train.write_graph(output_graph_def, '.', os.path.join(args.model_path, args.model_name), as_text=False)
 
 
 class load_pb(object):
