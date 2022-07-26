@@ -107,14 +107,16 @@ class DIN(object):
 
     def test(self, cols):
         self.output = {
-            'probability': self.probability
+            'probability': self.probability,
+            'probability_list': self.probability_list
         }
         for col in cols:
             self.output[col] = self.batch[col]
 
     def pred(self):
         self.output = {
-            'probability': self.probability
+            'probability': self.probability,
+            'probability_list': self.probability_list
         }
 
         if self.args.contains('item_key'):
