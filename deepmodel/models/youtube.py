@@ -217,8 +217,9 @@ class YouTubeRank(object):
             self.item = tf.cast(self.batch[self.item_name], dtype=tf.int32)
             self.item_key = tf.gather(self.args.item_key, self.item)
 
-            self.output['item'] = self.item
-            self.output['item_key'] = self.item_key
+            self.output['item'] = tf.gather(self.item, tf.nn.top_k(self.probability, k=tf.shape(self.probability)[0]).indices)
+            self.output['item_key'] = tf.gather(self.item_key, tf.nn.top_k(self.probability, k=tf.shape(self.probability)[0]).indices)
+
 
 
 

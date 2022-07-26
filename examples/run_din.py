@@ -68,7 +68,6 @@ with tf.Session() as sess:
 
 
 # ckpt转pb
-args.bn_training = False
 ckpt2pb(args, features, DIN)
 
 
@@ -76,11 +75,11 @@ ckpt2pb(args, features, DIN)
 path = os.path.join(args.model_path, args.model_name)
 pb_loader = load_pb(path, features, out_name='probability')
 pb_loader.predict(feed_dict={
-    'a': [2, 0, 5],
-    'b': [40, 12, 4],
+    'a': [[2, 0, 5]],
+    'b': [[40, 12, 4]],
     'c': [[3, 42, 80], [9, 25, 0], [81, 0, 0]],
-    'c_len': [3, 2, 1],
-    'd': [0.49, 0.123, 0.667],
+    'c_len': [[3, 2, 1]],
+    'd': [[0.49, 0.123, 0.667]],
     'e': [[0.48, 0.817, 0.5465, 0.913, 0.979, 0.931, 0.343, 0.364, 0.622, 0.318],
           [0.22, 0.532, 0.0838, 0.032, 0.423, 0.645, 0.865, 0.156, 0.363, 0.176],
           [0.60, 0.288, 0.3483, 0.152, 0.546, 0.935, 0.131, 0.825, 0.444, 0.674]],

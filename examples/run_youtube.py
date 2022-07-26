@@ -1,12 +1,12 @@
+## 召回
 import os
 import tensorflow as tf
 from deepmodel.param import Param
 from deepmodel.data import TFRecordLoader, Feature
-from deepmodel.models import YouTubeRecall, YouTubeRank
+from deepmodel.models import YouTubeRecall
 from deepmodel.utils import save_ckpt, load_ckpt, ckpt2pb, load_pb
 
 
-## 召回
 args = Param(
     epoch=10,
     batch_size=32,
@@ -19,6 +19,8 @@ args = Param(
     model_name='test.pb',
     item_name='b'
 )
+import random
+args.item_key = [0] + [random.randint(1000, 10000) for _ in range(100)]
 
 features = [
     Feature(name='uid', name_from='id', dtype='string', dim=1, for_train=False),
@@ -29,7 +31,6 @@ features = [
     Feature(name='c_weight', dtype='int64', dim=2, dense=True, for_train=False),
     Feature(name='c_len', dtype='int64', dim=1, for_train=False),
     Feature(name='d', dtype='float32', dim=1),
-    Feature(name='e', dtype='float32', dim=2, feat_size=10, dense=True),
     Feature(name='recall', dtype='int64', dim=2, dense=True, for_train=False, label=True)
 ]
 
@@ -73,9 +74,37 @@ with tf.Session() as sess:
         output = sess.run(model.output)
         print(output)
 
+# ckpt转pb
+ckpt2pb(args, features, YouTubeRecall)
 
 
+# 加载pb并预测
+path = os.path.join(args.model_path, args.model_name)
+pb_loader = load_pb(path, features, out_name='pred_topn_key')
+print(pb_loader.inputMap)
+pb_loader.predict(feed_dict={
+    'a': [[2]],
+    'a_len': [[1]],
+    'c': [[3, 42, 80]],
+    'c_weight': [[3, 1, 2]],
+    'c_len': [[3]],
+
+    'b': [[80]],
+    'd': [[0.49]]
+})
+
+
+
+###############################################################
 ## 排序
+import os
+import tensorflow as tf
+from deepmodel.param import Param
+from deepmodel.data import TFRecordLoader, Feature
+from deepmodel.models import YouTubeRank
+from deepmodel.utils import save_ckpt, load_ckpt, ckpt2pb, load_pb
+
+
 args = Param(
     epoch=10,
     batch_size=32,
@@ -87,6 +116,8 @@ args = Param(
     model_name='test.pb',
     item_name='b'
 )
+import random
+args.item_key = [0] + [random.randint(1000, 10000) for _ in range(100)]
 
 features = [
     Feature(name='uid', name_from='id', dtype='string', dim=1, for_train=False),
@@ -145,26 +176,23 @@ with tf.Session() as sess:
 
 
 # ckpt转pb
-args.bn_training = False
+import numpy as np
+args.dense_feats = {'e': np.random.randn(101*10).reshape(101, 10).astype('float32')}
 ckpt2pb(args, features, YouTubeRank)
 
 
 # 加载pb并预测
 path = os.path.join(args.model_path, args.model_name)
 pb_loader = load_pb(path, features, out_name='probability')
+print(pb_loader.inputMap)
 pb_loader.predict(feed_dict={
-    'a': [2, 0, 5],
-    'a_len': [1, 0, 1],
-    'b': [40, 12, 4],
-    'c': [[3, 42, 80], [9, 25, 0], [81, 0, 0]],
-    'c_weight': [[3, 1, 2], [1, 3, 0], [3, 0, 0]],
-    'c_len': [3, 2, 1],
-    'd': [0.49, 0.123, 0.667],
-    'e': [[0.48, 0.817, 0.5465, 0.913, 0.979, 0.931, 0.343, 0.364, 0.622, 0.318],
-          [0.22, 0.532, 0.0838, 0.032, 0.423, 0.645, 0.865, 0.156, 0.363, 0.176],
-          [0.60, 0.288, 0.3483, 0.152, 0.546, 0.935, 0.131, 0.825, 0.444, 0.674]],
+    'a': [[2, 2, 2]],
+    'a_len': [[1, 1, 1]],
+    'c': [[3, 42, 80], [3, 42, 80], [3, 42, 80]],
+    'c_weight': [[3, 1, 2], [3, 1, 2], [3, 1, 2]],
+    'c_len': [[3, 3, 3]],
+
+    'b': [[40, 12, 4]],
+    'd': [[0.49, 0.123, 0.667]]
 })
-
-
-
 

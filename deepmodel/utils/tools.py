@@ -53,15 +53,28 @@ def ckpt2pb(args, features, orgin_model, out_names=None, in_names=None):
     op_names = []
     with graph.as_default():
         batch_x = {}
-        features = features if in_names is None \
-            else [feature for feature in features if feature.name in in_names]
+        features = features if in_names is None else \
+            [feature for feature in features if feature.name in in_names]
         for feature in features:
             op_names.append(feature.name)
-            batch_x[feature.name] = tf.placeholder(feature.dtype, [None] if feature.dim == 1 else [None, None],
-                                                   name=feature.name)
+            batch_x[feature.name] = tf.placeholder(feature.dtype, [None, None], name=feature.name)
 
-        if args.contains('bn_training'):
-            args.bn_training = False
+        dense_feats = args.dense_feats if args.contains('dense_feats') else {}
+
+        size = tf.shape(batch_x[args.item_name])[1]
+
+        for feature in features:
+
+            feat = batch_x[feature.name]
+            feat_size = tf.shape(feat)[1] if feature.dim == 1 else tf.shape(feat)[0]
+
+            feat = tf.cond(feat_size < size, lambda: tf.tile(feat, [size, 1]), lambda: feat)
+            batch_x[feature.name] = tf.reshape(feat, [-1]) if feature.dim == 1 else feat
+
+            if feature.name in dense_feats:
+                batch_x[feature.name] = tf.gather(dense_feats[feature.name], batch_x[args.item_name])
+
+        args.bn_training = False
         model = orgin_model(args, features, batch_x, 1.0)
         model.pred()
 
