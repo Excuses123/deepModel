@@ -47,13 +47,13 @@ class DIN(object):
 
         concat_list, concat_dim = [], 0
         for feat in self.train_feat:
-            if feat.dtype.startswith('int'):
+            if feat.dtype.startswith('int') and (feat.emb_count or feat.emb_share):
                 f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
                                                else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
                 shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else \
                     self.embeddings[f'{feat.name}_emb'][1]
                 if feat.dim == 1 and f'{feat.name}_len' in self.batch:
-                    f_emb *= tf.expand_dims(self.batch[f'{feat.name}_len'], 1)
+                    f_emb *= tf.expand_dims(tf.cast(self.batch[f'{feat.name}_len'], f_emb.dtype), 1)
                 if feat.dim == 2:
                     weight = None
                     if self.args.contains('use_weight'):
@@ -63,7 +63,7 @@ class DIN(object):
                 concat_dim += shape[1]
             else:
                 f_emb = tf.reshape(self.batch[feat.name], [-1, 1]) if feat.dim < 2 else self.batch[feat.name]
-                concat_list.append(f_emb)
+                concat_list.append(tf.cast(f_emb, tf.float32))
                 concat_dim += feat.feat_size
 
         self.din_emb = {}

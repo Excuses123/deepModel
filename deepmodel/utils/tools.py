@@ -7,8 +7,10 @@ Author:
 
 import os
 import time
+import datetime
 import numpy as np
 import tensorflow.compat.v1 as tf
+from tensorflow.python.keras.utils import generic_utils
 from tensorflow.python.platform import gfile
 
 
@@ -26,6 +28,10 @@ def choice_gpu(memory=1024):
             break
         time.sleep(60)
     return gpu
+
+
+def get_datekey(datekey, day, format="%Y%m%d"):
+    return (datetime.datetime.strptime(datekey, format) + datetime.timedelta(days=day)).strftime(format)
 
 
 def save_ckpt(sess, save_path, global_step, name='model'):
@@ -46,9 +52,15 @@ def load_ckpt(sess, path):
     return sess
 
 
-def ckpt2pb(args, features, orgin_model, out_names=None, in_names=None):
+def ckpt2pb(args, features, orgin_model, out_names=None, in_names=None, **kwargs):
     tf.reset_default_graph()
     graph = tf.get_default_graph()
+
+    allowed_kwargs = {
+        'pred_feature',
+    }
+    generic_utils.validate_kwargs(kwargs, allowed_kwargs)
+    pred_feature = kwargs.pop('pred_feature', None)
 
     op_names = []
     with graph.as_default():
@@ -64,7 +76,6 @@ def ckpt2pb(args, features, orgin_model, out_names=None, in_names=None):
         size = tf.shape(batch_x[args.item_name])[1]
 
         for feature in features:
-
             feat = batch_x[feature.name]
             feat_size = tf.shape(feat)[1] if feature.dim == 1 else tf.shape(feat)[0]
 
@@ -74,9 +85,13 @@ def ckpt2pb(args, features, orgin_model, out_names=None, in_names=None):
             if feature.name in dense_feats:
                 batch_x[feature.name] = tf.gather(dense_feats[feature.name], batch_x[args.item_name])
 
+        if pred_feature is not None:
+            batch_x[pred_feature.name] = tf.placeholder(pred_feature.dtype, [1, None], name=pred_feature.name)
+            op_names.append(pred_feature.name)
+
         args.bn_training = False
         model = orgin_model(args, features, batch_x, 1.0)
-        model.pred()
+        model.pred(pred_feature.name) if pred_feature else model.pred()
 
         output = {}
         model_out = model.output

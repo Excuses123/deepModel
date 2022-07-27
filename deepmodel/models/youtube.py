@@ -33,7 +33,6 @@ class YouTubeRecall(object):
 
         self.build_model()
 
-
     def build_model(self):
 
         self.embeddings = {}
@@ -47,12 +46,12 @@ class YouTubeRecall(object):
         concat_list, concat_dim = [], 0
 
         for feat in self.train_feat:
-            if feat.dtype.startswith('int'):
+            if feat.dtype.startswith('int') and (feat.emb_count or feat.emb_share):
                 f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
                                                else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
                 shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
                 if feat.dim == 1 and f'{feat.name}_len' in self.batch:
-                    f_emb *= tf.expand_dims(self.batch[f'{feat.name}_len'], 1)
+                    f_emb *= tf.expand_dims(tf.cast(self.batch[f'{feat.name}_len'], f_emb.dtype), 1)
                 if feat.dim == 2:
                     weight = None
                     if self.args.contains('use_weight'):
@@ -62,7 +61,7 @@ class YouTubeRecall(object):
                 concat_dim += shape[1]
             else:
                 f_emb = tf.reshape(self.batch[feat.name], [-1, 1]) if feat.dim < 2 else self.batch[feat.name]
-                concat_list.append(f_emb)
+                concat_list.append(tf.cast(f_emb, tf.float32))
                 concat_dim += feat.feat_size
 
         inputs = tf.reshape(tf.concat(concat_list, axis=-1), [-1, concat_dim])
@@ -76,7 +75,6 @@ class YouTubeRecall(object):
         self.probability = tf.nn.softmax(self.logits)
 
         self.pred_topn = tf.nn.top_k(self.probability, self.args.topK).indices
-
 
     def train(self):
         y = tf.sequence_mask(tf.ones(tf.shape(self.label)[0]), tf.shape(self.label)[1], dtype=tf.float32)
@@ -96,7 +94,6 @@ class YouTubeRecall(object):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.args.learning_rate)
         self.train_op = optimizer.minimize(self.loss, global_step=self.global_step)
 
-
     def test(self, cols):
 
         self.output = {
@@ -110,12 +107,14 @@ class YouTubeRecall(object):
         for col in cols:
             self.output[col] = self.batch[col]
 
-
-    def pred(self):
+    def pred(self, name):
+        if name in self.batch:
+            pool = tf.squeeze(self.batch[name])
+            indices = tf.nn.top_k(tf.gather(tf.squeeze(self.probability), pool), self.args.topK).indices
+            self.pred_topn = tf.gather(pool, indices)
 
         self.output = {
-            'user_emb': self.user_emb,
-            'probability': self.probability,
+            'user_emb': tf.squeeze(self.user_emb),
             'pred_topn': self.pred_topn
         }
 
@@ -158,12 +157,12 @@ class YouTubeRank(object):
 
         concat_list, concat_dim = [], 0
         for feat in self.train_feat:
-            if feat.dtype.startswith('int'):
+            if feat.dtype.startswith('int') and (feat.emb_count or feat.emb_share):
                 f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
                                                else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
                 shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
                 if feat.dim == 1 and f'{feat.name}_len' in self.batch:
-                    f_emb *= tf.expand_dims(self.batch[f'{feat.name}_len'], 1)
+                    f_emb *= tf.expand_dims(tf.cast(self.batch[f'{feat.name}_len'], f_emb.dtype), 1)
                 if feat.dim == 2:
                     weight = None
                     if self.args.contains('use_weight'):
@@ -173,7 +172,7 @@ class YouTubeRank(object):
                 concat_dim += shape[1]
             else:
                 f_emb = tf.reshape(self.batch[feat.name], [-1, 1]) if feat.dim < 2 else self.batch[feat.name]
-                concat_list.append(f_emb)
+                concat_list.append(tf.cast(f_emb, tf.float32))
                 concat_dim += feat.feat_size
 
         inputs = tf.reshape(tf.concat(concat_list, axis=-1), [-1, concat_dim])

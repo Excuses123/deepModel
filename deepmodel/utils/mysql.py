@@ -14,7 +14,7 @@ class MySql(object):
     mysql工具类
     """
 
-    def __init__(self, host, port, user, password, db, charset):
+    def __init__(self, host, port, user, password, db, charset="utf8"):
         self.host = host
         self.port = port
         self.user = user

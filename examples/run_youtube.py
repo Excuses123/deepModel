@@ -25,7 +25,7 @@ args.item_key = [0] + [random.randint(1000, 10000) for _ in range(100)]
 features = [
     Feature(name='uid', name_from='id', dtype='string', dim=1, for_train=False),
     Feature(name='a', dtype='int32', dim=1, emb_count=11, emb_size=5),
-    Feature(name='a_len', name_from='f', dtype='float32', dtype_from='int64', dim=1),
+    Feature(name='a_len', name_from='f', dtype='int64', dim=1, for_train=False),
     Feature(name='b', dtype='int64', dim=1, emb_count=101, emb_size=10),
     Feature(name='c', dtype='int64', dim=2, dense=True, emb_share='b'),
     Feature(name='c_weight', dtype='int64', dim=2, dense=True, for_train=False),
@@ -75,10 +75,12 @@ with tf.Session() as sess:
         print(output)
 
 # ckpt转pb
-ckpt2pb(args, features, YouTubeRecall)
+pred_feature = Feature(name='recall_pool', dtype='int64', dim=2, dense=True)
+ckpt2pb(args, features, YouTubeRecall, pred_feature=pred_feature)
 
 
 # 加载pb并预测
+features.append(pred_feature)
 path = os.path.join(args.model_path, args.model_name)
 pb_loader = load_pb(path, features, out_name='pred_topn_key')
 print(pb_loader.inputMap)
@@ -90,7 +92,9 @@ pb_loader.predict(feed_dict={
     'c_len': [[3]],
 
     'b': [[80]],
-    'd': [[0.49]]
+    'd': [[0.49]],
+
+    'recall_pool': [[50, 51, 52, 53, 54, 55, 56, 57, 58, 59]]
 })
 
 
@@ -122,7 +126,7 @@ args.item_key = [0] + [random.randint(1000, 10000) for _ in range(100)]
 features = [
     Feature(name='uid', name_from='id', dtype='string', dim=1, for_train=False),
     Feature(name='a', dtype='int32', dim=1, emb_count=11, emb_size=5),
-    Feature(name='a_len', name_from='f', dtype='float32', dtype_from='int64', dim=1),
+    Feature(name='a_len', name_from='f', dtype='int64', dim=1, for_train=False),
     Feature(name='b', dtype='int64', dim=1, emb_count=101, emb_size=10),
     Feature(name='c', dtype='int64', dim=2, dense=True, emb_share='b'),
     Feature(name='c_weight', dtype='int64', dim=2, dense=True, for_train=False),
