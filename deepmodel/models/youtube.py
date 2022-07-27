@@ -13,6 +13,8 @@ class YouTubeRecall(object):
     """
     youtube recall model
     """
+    type = 'Recall'
+
     def __init__(self, args, features, batch, keep_prob):
 
         self.args = args
@@ -107,14 +109,14 @@ class YouTubeRecall(object):
         for col in cols:
             self.output[col] = self.batch[col]
 
-    def pred(self, name):
+    def pred(self, name=None):
         if name in self.batch:
-            pool = tf.squeeze(self.batch[name])
+            pool = self.batch[name]
             indices = tf.nn.top_k(tf.gather(tf.squeeze(self.probability), pool), self.args.topK).indices
-            self.pred_topn = tf.gather(pool, indices)
+            self.pred_topn = tf.gather(tf.squeeze(pool), indices)
 
         self.output = {
-            'user_emb': tf.squeeze(self.user_emb),
+            'user_emb': self.user_emb,
             'pred_topn': self.pred_topn
         }
 
@@ -126,6 +128,8 @@ class YouTubeRank(object):
     """
     youtube rank model
     """
+    type = 'Rank'
+
     def __init__(self, args, features, batch, keep_prob):
 
         self.args = args

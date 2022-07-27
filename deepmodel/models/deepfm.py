@@ -13,6 +13,7 @@ class DeepFM(object):
     """
     deepfm model
     """
+    type = 'Rank'
 
     def __init__(self, args, features, batch, keep_prob):
         self.args = args

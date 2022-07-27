@@ -11,6 +11,7 @@ from ..core.activation import dice
 
 
 class DIN(object):
+    type = 'Rank'
 
     def __init__(self, args, features, batch, keep_prob):
 

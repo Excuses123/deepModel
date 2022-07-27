@@ -78,8 +78,8 @@ def ckpt2pb(args, features, orgin_model, out_names=None, in_names=None, **kwargs
         for feature in features:
             feat = batch_x[feature.name]
             feat_size = tf.shape(feat)[1] if feature.dim == 1 else tf.shape(feat)[0]
-
-            feat = tf.cond(feat_size < size, lambda: tf.tile(feat, [size, 1]), lambda: feat)
+            if orgin_model.type == 'Rank':
+                feat = tf.cond(feat_size < size, lambda: tf.tile(feat, [size, 1]), lambda: feat)
             batch_x[feature.name] = tf.reshape(feat, [-1]) if feature.dim == 1 else feat
 
             if feature.name in dense_feats:
