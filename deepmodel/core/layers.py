@@ -9,7 +9,7 @@ import tensorflow.compat.v1 as tf
 
 
 """
-全连接
+全连接层
 """
 def fc_layer(inputs, hidden_units, activation=tf.nn.relu, use_bn=False,
              training=True, keep_prob=1.0, name='fc', seed=1024):
@@ -26,7 +26,7 @@ def fc_layer(inputs, hidden_units, activation=tf.nn.relu, use_bn=False,
     return outputs
 
 """
-池化
+池化层
 """
 def pool_layer(seqs_emb, mask_len=None, weight=None, mode='mean', weight_normalization=True,
                keep_dims=False):
@@ -75,7 +75,7 @@ def pool_layer(seqs_emb, mask_len=None, weight=None, mode='mean', weight_normali
             return tf.math.divide_no_nan(seqs_emb, tf.reduce_sum(weight, axis=1))
 
 """
-注意力机制
+attention层
 """
 def attention_layer(key, query, mask, hidden_units=(80, 40), activation=tf.nn.sigmoid,
                     weight_normalization=True):

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="deepModel",
-    version="0.0.9",
+    version="0.1.0",
     author="lujie",
     author_email="597906300@qq.com",
     description="This is a toolkit for deep learning development",
@@ -15,7 +15,7 @@ setuptools.setup(
     download_url='https://github.com/Excuses123/deepModel/tags',
     packages=setuptools.find_packages(exclude=["test", "test.models"]),
     python_requires=">=3.0",
-    install_requires=['h5py', 'requests', 'pandas'],
+    install_requires=['h5py', 'requests', 'pandas', 'numpy'],
     extras_require={
         "cpu": ["tensorflow>=1.14.0"],
         "gpu": ["tensorflow-gpu>=1.14.0"],

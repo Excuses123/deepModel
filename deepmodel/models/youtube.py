@@ -9,6 +9,7 @@ import tensorflow.compat.v1 as tf
 from ..core.layers import fc_layer, pool_layer
 from ..utils.tools import one_hot
 
+
 class YouTubeRecall(object):
     """
     youtube recall model
