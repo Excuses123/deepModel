@@ -46,16 +46,17 @@ class DIN(object):
 
         self.embeddings = {}
         for feat in self.emb_feat:
-            shape = [feat.emb_count, feat.emb_size]
-            self.embeddings[f'{feat.name}_emb'] = (tf.get_variable(f'{feat.name}_emb', shape=shape), shape)
+            self.embeddings[f'{feat.name}_emb'] = tf.get_variable(f'{feat.name}_emb',
+                                                                  shape=[feat.emb_count, feat.emb_size])
 
         concat_list, concat_dim = [], 0
         for feat in self.train_feat:
             if feat.dtype.startswith('int') and (feat.emb_count or feat.emb_share):
-                f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
-                                               else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
-                shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else \
-                    self.embeddings[f'{feat.name}_emb'][1]
+                f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'] if feat.emb_share
+                                               else self.embeddings[f'{feat.name}_emb'], self.batch[feat.name])
+                shape = self.embeddings[f'{feat.emb_share}_emb'].shape if feat.emb_share \
+                    else self.embeddings[f'{feat.name}_emb'].shape
+
                 if feat.dim == 1 and f'{feat.name}_len' in self.batch:
                     f_emb *= tf.expand_dims(tf.cast(self.batch[f'{feat.name}_len'], f_emb.dtype), 1)
                 if feat.dim == 2:
@@ -73,8 +74,8 @@ class DIN(object):
         self.din_emb = {}
         for k, feat in self.din_feat.items():
             self.din_emb[f'{k}_emb'] = tf.nn.embedding_lookup(
-                self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][
-                    0], self.batch[feat.name])
+                self.embeddings[f'{feat.emb_share}_emb'] if feat.emb_share else self.embeddings[f'{feat.name}_emb'],
+                self.batch[feat.name])
 
         att_emb = attention_layer(key=self.din_emb['key_emb'],
                                   query=self.din_emb['query_emb'],
@@ -82,8 +83,8 @@ class DIN(object):
                                   hidden_units=[80, 40], activation=dice)
         concat_list.append(att_emb)
 
-        concat_dim += self.embeddings[f"{self.din_feat['key'].emb_share}_emb"][1][1] if self.din_feat['key'].emb_share \
-            else self.embeddings[f'{self.din_feat["key"].name}_emb'][1][1]
+        concat_dim += self.embeddings[f"{self.din_feat['key'].emb_share}_emb"].shape[1] \
+            if self.din_feat['key'].emb_share else self.embeddings[f'{self.din_feat["key"].name}_emb'].shape[1]
 
         inputs = tf.reshape(tf.concat(concat_list, axis=-1), [-1, concat_dim])
 
@@ -133,5 +134,6 @@ class DIN(object):
             self.proba = self.probas['proba_union']
 
             self.output['item'] = tf.gather(self.item, tf.nn.top_k(self.proba, k=tf.shape(self.proba)[0]).indices)
-            self.output['item_key'] = tf.gather(self.item_key, tf.nn.top_k(self.proba, k=tf.shape(self.proba)[0]).indices)
+            self.output['item_key'] = tf.gather(self.item_key,
+                                                tf.nn.top_k(self.proba, k=tf.shape(self.proba)[0]).indices)
 

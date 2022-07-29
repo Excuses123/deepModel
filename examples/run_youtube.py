@@ -188,7 +188,7 @@ ckpt2pb(args, features, YouTubeRank)
 
 # 加载pb并预测
 path = os.path.join(args.model_path, args.model_name)
-pb_loader = load_pb(path, features, out_name='item_key')
+pb_loader = load_pb(path, features, out_name='proba_union')
 print(pb_loader.inputMap)
 pb_loader.predict(feed_dict={
     'a': [[2, 2, 2]],

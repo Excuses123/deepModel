@@ -41,19 +41,21 @@ class YouTubeRecall(object):
 
         self.embeddings = {}
         for feat in self.emb_feat:
-            shape = [feat.emb_count, feat.emb_size]
-            self.embeddings[f'{feat.name}_emb'] = (tf.get_variable(f'{feat.name}_emb', shape=shape), shape)
+            self.embeddings[f'{feat.name}_emb'] = tf.get_variable(f'{feat.name}_emb',
+                                                                  shape=[feat.emb_count, feat.emb_size])
 
-        self.input_b = tf.get_variable("input_b", [self.embeddings[f'{self.item_name}_emb'][1][0]],
+        self.input_b = tf.get_variable("input_b", [self.embeddings[f'{self.item_name}_emb'].shape[0]],
                                        initializer=tf.constant_initializer(0.0))
 
         concat_list, concat_dim = [], 0
 
         for feat in self.train_feat:
             if feat.dtype.startswith('int') and (feat.emb_count or feat.emb_share):
-                f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
-                                               else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
-                shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
+                f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'] if feat.emb_share
+                                               else self.embeddings[f'{feat.name}_emb'], self.batch[feat.name])
+                shape = self.embeddings[f'{feat.emb_share}_emb'].shape if feat.emb_share \
+                    else self.embeddings[f'{feat.name}_emb'].shape
+
                 if feat.dim == 1 and f'{feat.name}_len' in self.batch:
                     f_emb *= tf.expand_dims(tf.cast(self.batch[f'{feat.name}_len'], f_emb.dtype), 1)
                 if feat.dim == 2:
@@ -70,11 +72,12 @@ class YouTubeRecall(object):
 
         inputs = tf.reshape(tf.concat(concat_list, axis=-1), [-1, concat_dim])
 
-        outputs = fc_layer(inputs, hidden_units=self.args.hidden_units, use_bn=True, training=self.args.bn_training, keep_prob=self.keep_prob)
+        outputs = fc_layer(inputs, hidden_units=self.args.hidden_units, use_bn=True,
+                           training=self.args.bn_training, keep_prob=self.keep_prob)
 
-        self.user_emb = tf.layers.dense(outputs, self.embeddings[f'{self.item_name}_emb'][1][1], activation=tf.nn.relu)
+        self.user_emb = tf.layers.dense(outputs, self.embeddings[f'{self.item_name}_emb'].shape[1], activation=tf.nn.relu)
 
-        self.logits = tf.matmul(self.user_emb, self.embeddings[f'{self.item_name}_emb'][0], transpose_b=True) + self.input_b
+        self.logits = tf.matmul(self.user_emb, self.embeddings[f'{self.item_name}_emb'], transpose_b=True) + self.input_b
 
         self.proba = tf.nn.softmax(self.logits)
 
@@ -83,7 +86,7 @@ class YouTubeRecall(object):
     def train(self):
         y = tf.sequence_mask(tf.ones(tf.shape(self.label)[0]), tf.shape(self.label)[1], dtype=tf.float32)
         sample_b = tf.nn.embedding_lookup(self.input_b, self.label)
-        sample_w = tf.nn.embedding_lookup(self.embeddings[f'{self.item_name}_emb'][0], self.label)
+        sample_w = tf.nn.embedding_lookup(self.embeddings[f'{self.item_name}_emb'], self.label)
 
         user_v = tf.expand_dims(self.user_emb, 1)
         sample_w = tf.transpose(sample_w, perm=[0, 2, 1])
@@ -159,16 +162,18 @@ class YouTubeRank(object):
 
         self.embeddings = {}
         for feat in self.emb_feat:
-            shape = [feat.emb_count, feat.emb_size]
             # todo 支持指定embedding初始化
-            self.embeddings[f'{feat.name}_emb'] = (tf.get_variable(f'{feat.name}_emb', shape=shape), shape)
+            self.embeddings[f'{feat.name}_emb'] = tf.get_variable(f'{feat.name}_emb',
+                                                                  shape=[feat.emb_count, feat.emb_size])
 
         concat_list, concat_dim = [], 0
         for feat in self.train_feat:
             if feat.dtype.startswith('int') and (feat.emb_count or feat.emb_share):
-                f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'][0] if feat.emb_share
-                                               else self.embeddings[f'{feat.name}_emb'][0], self.batch[feat.name])
-                shape = self.embeddings[f'{feat.emb_share}_emb'][1] if feat.emb_share else self.embeddings[f'{feat.name}_emb'][1]
+                f_emb = tf.nn.embedding_lookup(self.embeddings[f'{feat.emb_share}_emb'] if feat.emb_share
+                                               else self.embeddings[f'{feat.name}_emb'], self.batch[feat.name])
+                shape = self.embeddings[f'{feat.emb_share}_emb'].shape if feat.emb_share \
+                    else self.embeddings[f'{feat.name}_emb'].shape
+
                 if feat.dim == 1 and f'{feat.name}_len' in self.batch:
                     f_emb *= tf.expand_dims(tf.cast(self.batch[f'{feat.name}_len'], f_emb.dtype), 1)
                 if feat.dim == 2:
@@ -231,7 +236,8 @@ class YouTubeRank(object):
             self.proba = self.probas['proba_union']
 
             self.output['item'] = tf.gather(self.item, tf.nn.top_k(self.proba, k=tf.shape(self.proba)[0]).indices)
-            self.output['item_key'] = tf.gather(self.item_key, tf.nn.top_k(self.proba, k=tf.shape(self.proba)[0]).indices)
+            self.output['item_key'] = tf.gather(self.item_key,
+                                                tf.nn.top_k(self.proba, k=tf.shape(self.proba)[0]).indices)
 
 
 
