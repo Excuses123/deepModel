@@ -45,7 +45,7 @@ class Feature(object):
             'label_type',  # ['single', 'multi']
             'num_class',
             'onehot',
-            'loss'   # ['mae', 'mse', 'rmse', 'softmax_cross_entroy', 'sigmoid_cross_entroy']
+            'loss'   # ['mae', 'mse', 'rmse', 'softmax_cross_entropy', 'sigmoid_cross_entropy']
         }
         # Validate optional keyword arguments.
         generic_utils.validate_kwargs(kwargs, allowed_kwargs)
@@ -156,9 +156,9 @@ class DataFrameLoader(object):
         self.data_dict = {}
         for feature in self.features:
             if feature.dim == 1:
-                self.data_dict[feature.name] = self.data[feature.name].values
+                self.data_dict[feature.name] = self.data[feature.name_from].values
             else:
-                self.data_dict[feature.name] = pad_sequences(self.data[feature.name].to_list(),
+                self.data_dict[feature.name] = pad_sequences(self.data[feature.name_from].to_list(),
                                                              dtype=feature.dtype, padding='post')
 
     def load_batch(self, batch_size):

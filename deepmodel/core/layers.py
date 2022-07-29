@@ -28,14 +28,17 @@ def fc_layer(inputs, hidden_units, activation=tf.nn.relu, use_bn=False,
 """
 池化
 """
-def pool_layer(seqs_emb, click_len, weight=None, mode='mean', weight_normalization=True,
+def pool_layer(seqs_emb, mask_len=None, weight=None, mode='mean', weight_normalization=True,
                keep_dims=False):
 
-    seq_max_len, embedding_size = tf.shape(seqs_emb)[1], tf.shape(seqs_emb)[2]
-    if len(click_len.shape) == 2:
-        click_len = tf.squeeze(click_len)
+    if mask_len is None:
+        return tf.reduce_mean(seqs_emb, axis=1, keep_dims=keep_dims)
 
-    mask = tf.sequence_mask(click_len, seq_max_len, dtype=tf.float32)
+    seq_max_len, embedding_size = tf.shape(seqs_emb)[1], tf.shape(seqs_emb)[2]
+    if len(mask_len.shape) == 2:
+        mask_len = tf.squeeze(mask_len)
+
+    mask = tf.sequence_mask(mask_len, seq_max_len, dtype=tf.float32)
     mask = tf.expand_dims(mask, -1)
 
     if weight is None:
@@ -50,7 +53,7 @@ def pool_layer(seqs_emb, click_len, weight=None, mode='mean', weight_normalizati
 
         seqs_emb = tf.reduce_sum(seqs_emb * mask, axis=1, keep_dims=keep_dims)
         if mode == 'mean':
-            seqs_emb = tf.math.divide_no_nan(seqs_emb, tf.cast(tf.expand_dims(click_len, 1), tf.float32))
+            seqs_emb = tf.math.divide_no_nan(seqs_emb, tf.cast(tf.expand_dims(mask_len, 1), tf.float32))
         return seqs_emb
     else:
         weight = tf.expand_dims(weight, -1)

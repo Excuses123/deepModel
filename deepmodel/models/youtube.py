@@ -59,7 +59,7 @@ class YouTubeRecall(object):
                     weight = None
                     if self.args.contains('use_weight'):
                         weight = self.batch.get(f'{feat.name}_weight', None) if self.args.use_weight else weight
-                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'], weight=weight)
+                    f_emb = pool_layer(f_emb, mask_len=self.batch.get(f'{feat.name}_len', None), weight=weight)
                 concat_list.append(f_emb)
                 concat_dim += shape[1]
             else:
@@ -174,7 +174,7 @@ class YouTubeRank(object):
                     weight = None
                     if self.args.contains('use_weight'):
                         weight = self.batch.get(f'{feat.name}_weight', None) if self.args.use_weight else weight
-                    f_emb = pool_layer(f_emb, self.batch[f'{feat.name}_len'], weight=weight)
+                    f_emb = pool_layer(f_emb, mask_len=self.batch.get(f'{feat.name}_len', None), weight=weight)
                 concat_list.append(f_emb)
                 concat_dim += shape[1]
             else:
