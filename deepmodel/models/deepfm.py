@@ -90,12 +90,12 @@ class DeepFM(object):
 
         # 输出
         self.logits = tf.add(self.y_fm, self.y_dnn)
-        self.probability = tf.nn.sigmoid(self.logits)[:, 0]
+        self.proba = tf.nn.sigmoid(self.logits)[:, 0]
 
     def train(self):
         self.loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.logits[:, 0], labels=self.label))
-        self.log_loss = tf.losses.log_loss(self.label, self.probability)
-        self.mse_loss = tf.reduce_mean(tf.pow(self.label - self.probability, 2))
+        self.log_loss = tf.losses.log_loss(self.label, self.proba)
+        self.mse_loss = tf.reduce_mean(tf.pow(self.label - self.proba, 2))
 
         tf.summary.scalar("loss", self.loss)
 
@@ -105,14 +105,14 @@ class DeepFM(object):
 
     def test(self, cols):
         self.output = {
-            'probability': self.probability,
+            'proba': self.proba,
         }
         for col in cols:
             self.output[col] = self.batch[col]
 
     def pred(self):
         self.output = {
-            'probability': self.probability,
+            'proba': self.proba,
         }
 
 def SeqsPool(embedding, item_seqs, click_len, keep_dims=False):

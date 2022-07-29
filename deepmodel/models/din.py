@@ -8,6 +8,7 @@ Author:
 import tensorflow.compat.v1 as tf
 from ..core.layers import fc_layer, pool_layer, attention_layer
 from ..core.activation import dice
+from ..utils.tools import one_hot
 
 
 class DIN(object):
@@ -19,22 +20,24 @@ class DIN(object):
         self.features = features
         self.batch = batch
         self.keep_prob = keep_prob
-        self.item_name = args.item_name
 
         self.train_feat = []
         self.emb_feat = []
         self.din_feat = {}
         self.label = []
+
         for feature in features:
             if feature.for_train:
                 if feature.attention:
                     self.din_feat[feature.attention] = feature
                 else:
                     self.train_feat.append(feature)
+
             if feature.emb_count:
                 self.emb_feat.append(feature)
+
             if feature.label:
-                self.label.append(batch[feature.name])
+                self.label.append(feature)
 
         self.build_model()
 
@@ -87,18 +90,27 @@ class DIN(object):
         outputs = fc_layer(inputs, hidden_units=self.args.hidden_units, use_bn=True, training=self.args.bn_training,
                            keep_prob=self.keep_prob)
 
-        self.logits = [tf.layers.dense(outputs, 2, activation=None, name=f"logits_label_{i}")
-                       for i in range(len(self.label))]
+        self.logits = dict([(feat.name, tf.layers.dense(outputs, feat.num_class, name=f"logits_{feat.name}"))
+                            for i, feat in enumerate(self.label)])
 
-        self.probability_list = [tf.nn.softmax(logit)[:, 1] for logit in self.logits]
+        self.probas = {}
+        for i, feat in enumerate(self.label):
+            if feat.label_type == 'multi':
+                self.probas[f'proba_{feat.name}'] = tf.nn.sigmoid(self.logits[feat.name])
+            else:
+                self.probas[f'proba_{feat.name}'] = tf.nn.softmax(self.logits[feat.name])[:, 1] if feat.num_class == 2 \
+                    else tf.nn.softmax(self.logits[feat.name])
 
-        self.probability = tf.reduce_mean(self.probability_list, axis=0)
-
+        if self.args.union_label:
+            self.probas['proba_union'] = tf.reduce_mean(list(self.probas.values()), axis=0)
 
     def train(self):
-        self.loss_list = [tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
-            logits=self.logits[i], labels=tf.cast(label, tf.int32))) for i, label in enumerate(self.label)]
-        self.loss = tf.reduce_mean(self.loss_list)
+        self.loss_list = dict([(feat.name, feat.loss(logits=self.logits[feat.name],
+                                                     labels=one_hot(self.batch[feat.name], num_classes=feat.num_class)
+                                                     if feat.onehot else self.batch[feat.name]))
+                               for i, feat in enumerate(self.label)])
+
+        self.loss = tf.reduce_mean(list(self.loss_list.values()))
 
         tf.summary.scalar("loss", self.loss)
         self.global_step = tf.Variable(0, trainable=False, name="global_step")
@@ -107,23 +119,19 @@ class DIN(object):
         self.train_op = optimizer.minimize(self.loss, global_step=self.global_step)
 
     def test(self, cols):
-        self.output = {
-            'probability': self.probability,
-            'probability_list': self.probability_list
-        }
+        self.output = self.probas
         for col in cols:
             self.output[col] = self.batch[col]
 
     def pred(self):
-        self.output = {
-            'probability': self.probability,
-            'probability_list': self.probability_list
-        }
+        self.output = self.probas
 
         if self.args.contains('item_key'):
-            self.item = tf.cast(self.batch[self.item_name], dtype=tf.int32)
+            self.item = tf.cast(self.batch[self.args.item_name], dtype=tf.int32)
             self.item_key = tf.gather(self.args.item_key, self.item)
 
-            self.output['item'] = tf.gather(self.item, tf.nn.top_k(self.probability, k=tf.shape(self.probability)[0]).indices)
-            self.output['item_key'] = tf.gather(self.item_key, tf.nn.top_k(self.probability, k=tf.shape(self.probability)[0]).indices)
+            self.proba = self.probas['proba_union']
+
+            self.output['item'] = tf.gather(self.item, tf.nn.top_k(self.proba, k=tf.shape(self.proba)[0]).indices)
+            self.output['item_key'] = tf.gather(self.item_key, tf.nn.top_k(self.proba, k=tf.shape(self.proba)[0]).indices)
 

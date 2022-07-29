@@ -34,6 +34,26 @@ def get_datekey(datekey, day, format="%Y%m%d"):
     return (datetime.datetime.strptime(datekey, format) + datetime.timedelta(days=day)).strftime(format)
 
 
+def one_hot(label, num_classes=None, dtype=tf.float32):
+    label = tf.cast(label, tf.int64)
+    if label.shape.__len__() == 1:
+        label = tf.expand_dims(label, axis=-1)
+
+    if not num_classes:
+        num_classes = tf.reduce_max(label) + 1
+
+    row = tf.expand_dims(tf.range(tf.shape(label)[0]), axis=-1)
+    row = tf.reshape(tf.tile(tf.cast(row, tf.int64), [1, tf.shape(label)[1]]), [-1, 1])
+
+    col = tf.reshape(tf.expand_dims(label, axis=-1), [-1, 1])
+
+    cates = tf.SparseTensor(indices=tf.cast(tf.concat([row, col], axis=1), tf.int64),
+                            values=tf.ones(tf.shape(col)[0], dtype),
+                            dense_shape=[tf.shape(label)[0], num_classes])
+
+    return tf.sparse_tensor_to_dense(cates)
+
+
 def save_ckpt(sess, save_path, global_step, name='model'):
     saver = tf.train.Saver()
     saver.save(sess, save_path=os.path.join(save_path, name), global_step=global_step)

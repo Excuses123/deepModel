@@ -14,7 +14,8 @@ args = Param(
     bn_training=True,
     model_path='./examples/checkpoint',
     model_name='test.pb',
-    item_name='b'
+    item_name='b',
+    union_label=False
 )
 
 features = [
@@ -25,7 +26,7 @@ features = [
     Feature(name='c_len', dtype='int64', dim=1, for_train=False),
     Feature(name='d', dtype='float32', dim=1),
     Feature(name='e', dtype='float32', dim=2, feat_size=10, dense=True),
-    Feature(name='label', dtype='float32', dim=1, for_train=False, label=True)
+    Feature(name='label', dtype='float32', dim=1, for_train=False, label=True, num_class=2, onehot=True)
 ]
 
 # train
@@ -73,7 +74,7 @@ ckpt2pb(args, features, DIN)
 
 # 加载pb并预测
 path = os.path.join(args.model_path, args.model_name)
-pb_loader = load_pb(path, features, out_name='probability')
+pb_loader = load_pb(path, features, out_name='proba_label')
 pb_loader.predict(feed_dict={
     'a': [[2, 0, 5]],
     'b': [[40, 12, 4]],

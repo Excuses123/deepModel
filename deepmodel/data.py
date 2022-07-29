@@ -10,6 +10,8 @@ import tensorflow.compat.v1 as tf
 from tensorflow.python.keras.utils import generic_utils
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 
+from .utils.loss import loss_layer
+
 
 class Feature(object):
     """ 特征信息类
@@ -39,29 +41,36 @@ class Feature(object):
             'feat_size',
             'for_train',
             'attention',
-            'label'
+            'label',
+            'label_type',  # ['single', 'multi']
+            'num_class',
+            'onehot',
+            'loss'   # ['mae', 'mse', 'rmse', 'softmax_cross_entroy', 'sigmoid_cross_entroy']
         }
         # Validate optional keyword arguments.
         generic_utils.validate_kwargs(kwargs, allowed_kwargs)
+
+        self.for_train = kwargs.pop('for_train', True)
+
         self.emb_count = kwargs.pop('emb_count', None)
+
+        self.emb_size = kwargs.pop('emb_size', 1)
+
         self.feat_size = kwargs.pop('feat_size', 1)
+
         self.emb_share = kwargs.pop('emb_share', None)
+
         self.attention = kwargs.pop('attention', None)
 
-        if 'for_train' in kwargs:
-            self.for_train = kwargs['for_train']
-        else:
-            self.for_train = True
+        self.label = kwargs.pop('label', False)
+        self.label_type = kwargs.pop('label_type', 'single')
 
-        if 'emb_size' in kwargs:
-            self.emb_size = kwargs['emb_size']
-        else:
-            self.emb_size = 1
+        self.num_class = kwargs.pop('num_class', None)
 
-        if 'label' in kwargs:
-            self.label = kwargs['label']
-        else:
-            self.label = False
+        self.onehot = kwargs.pop('onehot', False)
+
+        loss = kwargs.pop('loss', 'softmax_cross_entropy')
+        self.loss = loss_layer(loss)
 
 
 class TFRecordLoader(object):

@@ -118,7 +118,8 @@ args = Param(
     use_weight=True,
     model_path='./examples/checkpoint',
     model_name='test.pb',
-    item_name='b'
+    item_name='b',
+    union_label=True
 )
 import random
 args.item_key = [0] + [random.randint(1000, 10000) for _ in range(100)]
@@ -133,8 +134,8 @@ features = [
     Feature(name='c_len', dtype='int64', dim=1, for_train=False),
     Feature(name='d', dtype='float32', dim=1),
     Feature(name='e', dtype='float32', dim=2, feat_size=10, dense=True),
-    Feature(name='label', dtype='float32', dim=1, for_train=False, label=True),
-    Feature(name='label2', dtype='float32', dim=1, for_train=False, label=True)
+    Feature(name='label', dtype='float32', dim=1, for_train=False, label=True, num_class=2, onehot=True),
+    Feature(name='label2', dtype='float32', dim=1, for_train=False, label=True, num_class=2, onehot=True)
 ]
 
 # train
@@ -148,13 +149,13 @@ with tf.Session() as sess:
     l_sum, l1_sum, l2_sum, step = 0, 0, 0, 0
     while True:
         try:
-            l, (l1, l2), _ = sess.run([model.loss, model.loss_list, model.train_op])
+            l, l_list, _ = sess.run([model.loss, model.loss_list, model.train_op])
             l_sum += l
-            l1_sum += l1
-            l2_sum += l2
+            l1_sum += l_list['label']
+            l2_sum += l_list['label2']
             step += 1
             if step % 10 == 0:
-                print(f'step: {step}   loss: {l_sum/step:.4f}   loss1: {l1_sum/step:.4f}   loss2: {l2_sum/step:.4f}')
+                print(f'step: {step}   loss: {l_sum/step:.4f}   loss_label: {l1_sum/step:.4f}   loss_label2: {l2_sum/step:.4f}')
         except:
             print("End of dataset")
             break
@@ -187,7 +188,7 @@ ckpt2pb(args, features, YouTubeRank)
 
 # 加载pb并预测
 path = os.path.join(args.model_path, args.model_name)
-pb_loader = load_pb(path, features, out_name='probability')
+pb_loader = load_pb(path, features, out_name='item_key')
 print(pb_loader.inputMap)
 pb_loader.predict(feed_dict={
     'a': [[2, 2, 2]],
